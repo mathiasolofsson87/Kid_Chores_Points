@@ -1,7 +1,7 @@
 """Constants for Kid Chores & Points."""
 
 DOMAIN = "kid_chores_points"
-CARD_URL = "/kid_chores_points/kid-chores-rewards-card.js"
+CARD_URL = "/kid_chores_points/kid-chores-cards.js"
 PLATFORMS = ["sensor", "binary_sensor", "todo"]
 
 # Fired by Maintenance Supporter (iluebbe/maintenance_supporter)

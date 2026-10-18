@@ -31,53 +31,14 @@ views:
     type: sections
     max_columns: 3
     sections:
-      # ---------------- Points ----------------
+      # ---------------- Status ----------------
+      # Built into the integration (pick the tracker in the card editor).
       - type: grid
         cards:
-          - type: heading
-            heading: This week's points
-            icon: mdi:star
-          - type: gauge
-            entity: sensor.chores_week_progress
-            name: Towards the weekly goal
-            min: 0
-            max: 100
-            needle: false
-            severity:
-              red: 0
-              yellow: 50
-              green: 100
-            grid_options:
-              columns: full
-            tap_action:
-              action: none
-          - type: tile
-            entity: sensor.chores_points_this_week
-            name: This week
-            tap_action: {action: none}
-            icon_tap_action: {action: none}
-          - type: tile
-            entity: sensor.chores_points_to_goal
-            name: Left to goal
-            tap_action: {action: none}
-            icon_tap_action: {action: none}
-          - type: tile
-            entity: sensor.chores_points_today
-            name: Today
-            tap_action: {action: none}
-            icon_tap_action: {action: none}
-          - type: tile
-            entity: sensor.chores_points_bank
-            name: Points bank
-            color: amber
-            tap_action: {action: none}
-            icon_tap_action: {action: none}
-          - type: markdown
-            content: >
-              🎯 Goal: **{{ states('sensor.chores_weekly_goal') }} points** this week
-              {%- set last = states('sensor.chores_last_week_result') %}
-              {%- if last not in ['unknown', 'unavailable', ''] %}<br>
-              📅 Last week: {{ last }}{% endif %}
+          - type: custom:kid-chores-status-card
+            # Optional shortcut chips; `users` limits who sees a chip.
+            # chips:
+            #   - {icon: "mdi:shield-account", label: Parents, navigation_path: parents, users: [PARENT_USER_ID_1]}
 
       # ---------------- Daily (mandatory) ----------------
       - type: grid

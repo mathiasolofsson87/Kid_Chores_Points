@@ -51,7 +51,7 @@ def _manager(hass: HomeAssistant, call: ServiceCall) -> ChoresManager:
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Register the rewards card and domain-wide services."""
-    card_file = Path(__file__).parent / "www" / "kid-chores-rewards-card.js"
+    card_file = Path(__file__).parent / "www" / "kid-chores-cards.js"
     await hass.http.async_register_static_paths(
         [StaticPathConfig(CARD_URL, str(card_file), cache_headers=False)]
     )

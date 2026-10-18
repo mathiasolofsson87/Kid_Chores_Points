@@ -60,9 +60,24 @@ With more than one tracker, pass `config_entry` to pick which one.
 
 Remove the package, then re-enter chores/rewards in the UI. The old balances can be carried over with `adjust_points`.
 
+## Status card
+
+**Add card → Kid Chores & Points – Status** shows one child's overview: the weekly goal, a progress bar towards it (red < 50 %, yellow ≥ 50 %, green at 100 %), tiles for *this week*, *left to goal*, *today* and the *points bank*, and last week's result once there is one. Pick which child's tracker to show in the card editor (`device:`); `title:` is optional. English and Swedish texts follow the user's language.
+
+Optional shortcut chips (YAML only), e.g. a button to the parents' view that only some users see:
+
+```yaml
+type: custom:kid-chores-status-card
+chips:
+  - icon: mdi:shield-account
+    label: Parents
+    navigation_path: parents
+    users: [<ha user id>, <ha user id>]   # omit to show to everyone
+```
+
 ## Rewards card
 
-The integration ships its own dashboard card – no extra install or resource setup. In the dashboard editor choose **Add card → Kid Chores & Points – Rewards**.
+The integration ships its own dashboard cards – no extra install or resource setup. In the dashboard editor choose **Add card → Kid Chores & Points – Rewards**.
 
 - Lists the rewards you configured, with the point cost and an icon (guessed from the name, e.g. Xbox, screen time, money – override with `icons:` in YAML), and shows the current bank balance.
 - Only affordable rewards are shown (set `show_unaffordable: true` to also show the rest greyed out). When nothing is affordable it shows a "collect more points" hint with the costs.

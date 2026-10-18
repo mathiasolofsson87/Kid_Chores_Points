@@ -128,7 +128,11 @@ class ChoresSensor(ChoresEntity, SensorEntity):
         return self.entity_description.value_fn(self.manager)
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any] | None:
+    def extra_state_attributes(self) -> dict[str, Any]:
+        attrs: dict[str, Any] = {
+            "key": self.entity_description.key,
+            "entry_id": self.manager.entry.entry_id,
+        }
         if fn := self.entity_description.attrs_fn:
-            return fn(self.manager)
-        return None
+            attrs.update(fn(self.manager))
+        return attrs
