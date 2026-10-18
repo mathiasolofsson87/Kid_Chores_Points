@@ -8,7 +8,7 @@ A Home Assistant integration that turns chore completions into points, a weekly 
 2. Install **Kid Chores & Points**, restart Home Assistant.
 3. **Settings → Devices & services → Add integration → Kid Chores & Points**. Give it a name (one per child).
 4. Click **Configure** on the integration to set up everything in the UI:
-   - **Mandatory chores** – name (must match the Maintenance Supporter task name exactly) + points. Counted once per day.
+   - **Mandatory chores** – pick a task from the Maintenance Supporter list (free-text names also work) + points. Matching is by task name, so if you rename a task in Maintenance Supporter, re-pick it here. Counted once per day.
    - **Bonus chores** – only paid once all mandatory chores are done that day; earlier completions are held as *pending* and paid out when the last mandatory chore is done. Pending points are dropped at midnight.
    - **Rewards** – name per unit (e.g. `15 min Xbox`) + point cost.
    - **Weekly goal & policy** – goal, extra bank points when reached, and what happens if missed (bank all / bank half / forfeit).

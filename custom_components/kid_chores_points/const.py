@@ -4,6 +4,7 @@ DOMAIN = "kid_chores_points"
 PLATFORMS = ["sensor", "binary_sensor", "todo"]
 
 # Fired by Maintenance Supporter (iluebbe/maintenance_supporter)
+MS_DOMAIN = "maintenance_supporter"
 EVENT_TASK_COMPLETED = "maintenance_supporter_task_completed"
 
 # Option keys

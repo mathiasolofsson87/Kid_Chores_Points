@@ -12,13 +12,14 @@ from homeassistant.config_entries import (
     ConfigFlowResult,
     OptionsFlow,
 )
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.selector import (
     EntitySelector,
     EntitySelectorConfig,
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
+    SelectOptionDict,
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
@@ -38,6 +39,7 @@ from .const import (
     CONF_REWARDS,
     DEFAULT_OPTIONS,
     DOMAIN,
+    MS_DOMAIN,
     POLICIES,
 )
 
@@ -46,6 +48,21 @@ def _points(max_: int = 5000) -> NumberSelector:
     return NumberSelector(
         NumberSelectorConfig(min=0, max=max_, step=1, mode=NumberSelectorMode.BOX)
     )
+
+
+def _ms_task_options(hass: HomeAssistant) -> list[SelectOptionDict]:
+    """Tasks defined in Maintenance Supporter (empty if it isn't installed)."""
+    options: dict[str, str] = {}
+    for entry in hass.config_entries.async_entries(MS_DOMAIN):
+        obj = (entry.data.get("object") or {}).get("name")
+        for task in (entry.data.get("tasks") or {}).values():
+            if not isinstance(task, dict) or not (name := task.get("name")):
+                continue
+            options.setdefault(name, f"{name} ({obj})" if obj else name)
+    return [
+        SelectOptionDict(value=name, label=label)
+        for name, label in sorted(options.items(), key=lambda kv: kv[1].lower())
+    ]
 
 
 class ChoresConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -219,7 +236,11 @@ class ChoresOptionsFlow(OptionsFlow):
         return "\n".join(f"- {name}: {pts} p" for name, pts in items.items())
 
     async def _add(
-        self, kind: str, step_id: str, user_input: dict[str, Any] | None
+        self,
+        kind: str,
+        step_id: str,
+        user_input: dict[str, Any] | None,
+        from_ms: bool = False,
     ) -> ConfigFlowResult:
         if user_input is not None:
             name = user_input["name"].strip()
@@ -227,11 +248,21 @@ class ChoresOptionsFlow(OptionsFlow):
                 self._load()[kind][name] = int(user_input["points"])
                 self._save()
             return await getattr(self, f"async_step_{kind}")()
+        name_selector: Any = TextSelector()
+        if from_ms and (tasks := _ms_task_options(self.hass)):
+            # custom_value keeps free-text names working too
+            name_selector = SelectSelector(
+                SelectSelectorConfig(
+                    options=tasks,
+                    custom_value=True,
+                    mode=SelectSelectorMode.DROPDOWN,
+                )
+            )
         return self.async_show_form(
             step_id=step_id,
             data_schema=vol.Schema(
                 {
-                    vol.Required("name"): TextSelector(),
+                    vol.Required("name"): name_selector,
                     vol.Required("points", default=1): _points(1000),
                 }
             ),
@@ -266,7 +297,7 @@ class ChoresOptionsFlow(OptionsFlow):
         return self._menu("mandatory", CONF_MANDATORY)
 
     async def async_step_mandatory_add(self, user_input=None) -> ConfigFlowResult:
-        return await self._add(CONF_MANDATORY, "mandatory_add", user_input)
+        return await self._add(CONF_MANDATORY, "mandatory_add", user_input, True)
 
     async def async_step_mandatory_remove(self, user_input=None) -> ConfigFlowResult:
         return await self._remove(CONF_MANDATORY, "mandatory_remove", user_input)
@@ -276,7 +307,7 @@ class ChoresOptionsFlow(OptionsFlow):
         return self._menu("bonus", CONF_BONUS)
 
     async def async_step_bonus_add(self, user_input=None) -> ConfigFlowResult:
-        return await self._add(CONF_BONUS, "bonus_add", user_input)
+        return await self._add(CONF_BONUS, "bonus_add", user_input, True)
 
     async def async_step_bonus_remove(self, user_input=None) -> ConfigFlowResult:
         return await self._remove(CONF_BONUS, "bonus_remove", user_input)

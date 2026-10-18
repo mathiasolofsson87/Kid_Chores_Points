@@ -47,7 +47,7 @@
       },
       "mandatory": {
         "title": "Mandatory chores",
-        "description": "Names must match the Maintenance Supporter task names exactly. Each pays once per day, and bonus chores unlock when all are done.\n\n{items}",
+        "description": "Pick from your Maintenance Supporter tasks. Each pays once per day, and bonus chores unlock when all are done.\n\n{items}",
         "menu_options": {
           "mandatory_add": "Add or update a chore",
           "mandatory_remove": "Remove chores",
@@ -57,9 +57,10 @@
       "mandatory_add": {
         "title": "Add or update mandatory chore",
         "data": {
-          "name": "Task name",
+          "name": "Maintenance Supporter task",
           "points": "Points"
-        }
+        },
+        "description": "Pick a task from Maintenance Supporter (or type a name). Picking an existing chore updates its points."
       },
       "mandatory_remove": {
         "title": "Remove mandatory chores",
@@ -79,9 +80,10 @@
       "bonus_add": {
         "title": "Add or update bonus chore",
         "data": {
-          "name": "Task name",
+          "name": "Maintenance Supporter task",
           "points": "Points"
-        }
+        },
+        "description": "Pick a task from Maintenance Supporter (or type a name). Picking an existing chore updates its points."
       },
       "bonus_remove": {
         "title": "Remove bonus chores",
