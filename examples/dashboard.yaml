@@ -16,7 +16,7 @@
 #      (Configure -> Rewards), or edit the buttons and the
 #      binary_sensor.chores_can_afford_* ids (slug of the reward name,
 #      e.g. "15 min Xbox" -> can_afford_15_min_xbox).
-#   3. In Maintenance Supporter, label the mandatory tasks "daglig" and
+#   3. In Maintenance Supporter, label the mandatory tasks "mandatory" and
 #      the bonus tasks "bonus" (used by the maintenance-supporter-card).
 #      Remove those cards if you complete chores another way.
 #   4. Replace PARENT_USER_ID_1/2 with your HA user ids
@@ -108,7 +108,7 @@ views:
             show_actions: true
             show_assignee: false
             compact: true
-            filter_labels: [daglig]
+            filter_labels: [mandatory]
             visibility:
               - condition: state
                 entity: binary_sensor.chores_mandatory_chores_complete

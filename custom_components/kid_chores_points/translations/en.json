@@ -55,7 +55,7 @@
       },
       "mandatory": {
         "title": "Mandatory chores",
-        "description": "Pick from your Maintenance Supporter tasks. Each pays once per day, and bonus chores unlock when all are done.\n\n{items}",
+        "description": "Pick from your Maintenance Supporter tasks. Each pays once per day, and bonus chores unlock when all are done.\n\n{items}\n\nTo show these chores in the dashboard's Maintenance Supporter list, give each task the label `mandatory` in Maintenance Supporter.",
         "menu_options": {
           "mandatory_add": "Add or update a chore",
           "mandatory_remove": "Remove chores",
@@ -68,7 +68,7 @@
           "name": "Maintenance Supporter task",
           "points": "Points"
         },
-        "description": "Pick a task from Maintenance Supporter (or type a name). Picking an existing chore updates its points."
+        "description": "Pick a task from Maintenance Supporter (or type a name). Picking an existing chore updates its points. Remember to give the task the label `mandatory` in Maintenance Supporter if you want it in the dashboard list."
       },
       "mandatory_remove": {
         "title": "Remove mandatory chores",
@@ -78,7 +78,7 @@
       },
       "bonus": {
         "title": "Bonus chores",
-        "description": "Only paid out once all mandatory chores are done that day (held as pending until then).\n\n{items}",
+        "description": "Only paid out once all mandatory chores are done that day (held as pending until then).\n\n{items}\n\nTo show these chores in the dashboard's Maintenance Supporter list, give each task the label `bonus` in Maintenance Supporter.",
         "menu_options": {
           "bonus_add": "Add or update a chore",
           "bonus_remove": "Remove chores",
@@ -91,7 +91,7 @@
           "name": "Maintenance Supporter task",
           "points": "Points"
         },
-        "description": "Pick a task from Maintenance Supporter (or type a name). Picking an existing chore updates its points."
+        "description": "Pick a task from Maintenance Supporter (or type a name). Picking an existing chore updates its points. Remember to give the task the label `bonus` in Maintenance Supporter if you want it in the dashboard list."
       },
       "bonus_remove": {
         "title": "Remove bonus chores",

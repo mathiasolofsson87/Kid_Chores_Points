@@ -60,6 +60,10 @@ With more than one tracker, pass `config_entry` to pick which one.
 
 Remove the package, then re-enter chores/rewards in the UI. The old balances can be carried over with `adjust_points`.
 
+## Maintenance Supporter labels
+
+Points are awarded by task name, so any configured chore counts when completed. The example dashboard, however, shows Maintenance Supporter's task lists filtered by **label**: give your mandatory tasks the label `mandatory` and your bonus tasks the label `bonus` in Maintenance Supporter, or they won't appear in the dashboard lists.
+
 ## Example dashboard
 
 [`examples/dashboard.yaml`](examples/dashboard.yaml) is a ready-made dashboard with a child view (weekly progress, today's chores, bonus chores, reward buttons) and a parent view (settings shortcut, point adjustments, rewards to hand out). The child view uses the [Maintenance Supporter card](https://github.com/iluebbe/maintenance_supporter) for completing chores; remove those cards if you complete chores another way.
