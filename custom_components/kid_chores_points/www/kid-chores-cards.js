@@ -107,7 +107,7 @@ class KidChoresRewardsCard extends HTMLElement {
   }
 
   setConfig(config) {
-    this._config = { show_unaffordable: false, color: "#30d158", ...config };
+    this._config = { show_unaffordable: false, show_hint: true, color: "#30d158", ...config };
     this._sig = "";
     this._render();
   }
@@ -203,12 +203,12 @@ class KidChoresRewardsCard extends HTMLElement {
         </div>`;
     }
 
-    if (rewards.length && !anyAffordable) {
-      const costs = rewards.map((r) => `${r.st.attributes.reward} = ${r.st.attributes.cost} p`).join(" · ");
+    if (rewards.length && !anyAffordable && this._config.show_hint !== false) {
+      const costs = rewards.map((r) => kcpEsc(`${r.st.attributes.reward} = ${r.st.attributes.cost} p`)).join("<br>");
       body += `
         <div class="row hint" style="--c:var(--disabled-text-color, #9e9e9e)">
           <div class="ico"><ha-icon icon="mdi:arm-flex"></ha-icon></div>
-          <div class="txt"><div class="primary">${this._t("collect")}</div><div class="secondary">${kcpEsc(costs)}</div></div>
+          <div class="txt"><div class="primary">${this._t("collect")}</div><div class="secondary">${costs}</div></div>
         </div>`;
     }
 
@@ -284,11 +284,12 @@ class KidChoresRewardsCardEditor extends HTMLElement {
     if (!this._form) {
       this._form = document.createElement("ha-form");
       this._form.computeLabel = (s) =>
-        ({ device: "Tracker (leave empty for the first one)", title: "Title", show_unaffordable: "Also show rewards that can't be afforded yet", color: "Accent colour" }[s.name] || s.name);
+        ({ device: "Tracker (leave empty for the first one)", title: "Title", show_unaffordable: "Also show rewards that can't be afforded yet", show_hint: "Show the \"collect more points\" hint when nothing is affordable", color: "Accent colour" }[s.name] || s.name);
       this._form.schema = [
         { name: "device", selector: { device: { integration: "kid_chores_points" } } },
         { name: "title", selector: { text: {} } },
         { name: "show_unaffordable", selector: { boolean: {} } },
+        { name: "show_hint", selector: { boolean: {} } },
         { name: "color", selector: { text: {} } },
       ];
       this._form.addEventListener("value-changed", (ev) => {
@@ -299,7 +300,7 @@ class KidChoresRewardsCardEditor extends HTMLElement {
       this.appendChild(this._form);
     }
     this._form.hass = this._hass;
-    this._form.data = { show_unaffordable: false, ...this._config };
+    this._form.data = { show_unaffordable: false, show_hint: true, ...this._config };
   }
 }
 

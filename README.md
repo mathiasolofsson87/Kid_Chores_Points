@@ -80,7 +80,7 @@ chips:
 The integration ships its own dashboard cards – no extra install or resource setup. In the dashboard editor choose **Add card → Kid Chores & Points – Rewards**.
 
 - Lists the rewards you configured, with the point cost and an icon (guessed from the name, e.g. Xbox, screen time, money – override with `icons:` in YAML), and shows the current bank balance.
-- Only affordable rewards are shown (set `show_unaffordable: true` to also show the rest greyed out). When nothing is affordable it shows a "collect more points" hint with the costs.
+- Only affordable rewards are shown (set `show_unaffordable: true` to also show the rest greyed out). When nothing is affordable it shows a "collect more points" hint listing each reward and its cost on its own line (turn it off with `show_hint: false` or the switch in the card editor).
 - Tapping a reward asks for confirmation inline, then redeems it.
 - With several trackers, pick which one in the card editor (`device:`). English and Swedish texts are built in (follows the user's language); `title:` and `color:` can be overridden.
 
@@ -90,6 +90,7 @@ type: custom:kid-chores-rewards-card
 # title: Spend your points
 # color: "#30d158"
 # show_unaffordable: false
+# show_hint: true
 # icons:
 #   15 min Xbox: mdi:microsoft-xbox
 ```
