@@ -42,3 +42,9 @@ With more than one tracker, pass `config_entry` to pick which one.
 ## Migrating from the YAML package
 
 Remove the package, then re-enter chores/rewards in the UI. The old balances can be carried over with `adjust_points`.
+
+## Example dashboard
+
+[`examples/dashboard.yaml`](examples/dashboard.yaml) is a ready-made dashboard with a child view (weekly progress, today's chores, bonus chores, reward buttons) and a parent view (settings shortcut, point adjustments, rewards to hand out). The child view uses the [Maintenance Supporter card](https://github.com/iluebbe/maintenance_supporter) for completing chores; remove those cards if you complete chores another way.
+
+To use it: **Settings → Dashboards → Add dashboard → New dashboard from scratch**, open it, **⋮ → Raw configuration editor**, and paste the file. Read the `EDIT` notes at the top – entity ids assume the tracker is named `Chores`, the reward buttons assume rewards named `10 kr`, `15 min Xbox` and `15 min screen time`, and the parent view needs your user ids.

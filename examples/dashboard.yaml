@@ -1,0 +1,311 @@
+# =====================================================================
+#  KID CHORES & POINTS – example dashboard
+#
+#  Paste into a new dashboard:
+#   Settings -> Dashboards -> Add dashboard -> "New dashboard from
+#   scratch" -> open it -> ⋮ -> Raw configuration editor -> replace all.
+#
+#  >>> EDIT <<<
+#   1. Entity ids below assume the tracker is named "Chores"
+#      (entity ids are <tracker name>_<entity name>, e.g.
+#      sensor.chores_points_this_week). If you named it differently,
+#      find & replace "chores_" with your tracker's slug
+#      (check Settings -> Devices & services -> Kid Chores & Points).
+#   2. The reward buttons use the example rewards "10 kr", "15 min Xbox"
+#      and "15 min screen time". Create rewards with EXACTLY these names
+#      (Configure -> Rewards), or edit the buttons and the
+#      binary_sensor.chores_can_afford_* ids (slug of the reward name,
+#      e.g. "15 min Xbox" -> can_afford_15_min_xbox).
+#   3. In Maintenance Supporter, label the mandatory tasks "daglig" and
+#      the bonus tasks "bonus" (used by the maintenance-supporter-card).
+#      Remove those cards if you complete chores another way.
+#   4. Replace PARENT_USER_ID_1/2 with your HA user ids
+#      (Settings -> People -> Users -> open user -> ID).
+#   5. On the child's account: Profile -> Dashboard -> pick this one.
+# =====================================================================
+title: My chores
+views:
+  # -------------------------------------------------------------------
+  #  Child view
+  # -------------------------------------------------------------------
+  - title: Today
+    path: today
+    icon: mdi:star-face
+    type: sections
+    max_columns: 3
+    sections:
+      # ---------------- Points ----------------
+      - type: grid
+        cards:
+          - type: heading
+            heading: This week's points
+            icon: mdi:star
+          - type: gauge
+            entity: sensor.chores_week_progress
+            name: Towards the weekly goal
+            min: 0
+            max: 100
+            needle: false
+            severity:
+              red: 0
+              yellow: 50
+              green: 100
+            grid_options:
+              columns: full
+            tap_action:
+              action: none
+          - type: tile
+            entity: sensor.chores_points_this_week
+            name: This week
+            tap_action: {action: none}
+            icon_tap_action: {action: none}
+          - type: tile
+            entity: sensor.chores_points_to_goal
+            name: Left to goal
+            tap_action: {action: none}
+            icon_tap_action: {action: none}
+          - type: tile
+            entity: sensor.chores_points_today
+            name: Today
+            tap_action: {action: none}
+            icon_tap_action: {action: none}
+          - type: tile
+            entity: sensor.chores_points_bank
+            name: Points bank
+            color: amber
+            tap_action: {action: none}
+            icon_tap_action: {action: none}
+          - type: markdown
+            content: >
+              🎯 Goal: **{{ states('sensor.chores_weekly_goal') }} points** by Sunday night
+              {%- set last = states('sensor.chores_last_week_result') %}
+              {%- if last not in ['unknown', 'unavailable', ''] %}<br>
+              📅 Last week: {{ last }}{% endif %}
+
+      # ---------------- Daily (mandatory) ----------------
+      - type: grid
+        cards:
+          - type: heading
+            heading: To do today
+            icon: mdi:format-list-checks
+          - type: markdown
+            content: >
+              {%- set s = 'sensor.chores_mandatory_chores_remaining' %}
+              {%- set done = state_attr(s, 'done') or [] %}
+              {%- set left = state_attr(s, 'remaining') or [] %}
+              {%- set pts = state_attr(s, 'mandatory_chores') or {} %}
+              {%- for t in done %}
+              ✅ ~~{{ t }}~~ (+{{ pts[t] }})
+              {% endfor %}
+              {%- for t in left %}
+              ⬜ **{{ t }}** (+{{ pts[t] }})
+              {% endfor %}
+              {%- if left | count == 0 %}
+              🎉 **All done for today – great job!**
+              {%- endif %}
+          - type: custom:maintenance-supporter-card
+            show_header: false
+            show_actions: true
+            show_assignee: false
+            compact: true
+            filter_labels: [daglig]
+            visibility:
+              - condition: state
+                entity: binary_sensor.chores_mandatory_chores_complete
+                state: "off"
+
+      # ---------------- Bonus ----------------
+      - type: grid
+        cards:
+          - type: heading
+            heading: Bonus chores
+            icon: mdi:star-plus
+          - type: markdown
+            content: >
+              🔒 Bonus chores unlock when today's chores are done.
+              {%- set p = states('sensor.chores_pending_bonus_points') | int(0) %}
+              {%- if p > 0 %}<br>⏳ **{{ p }} bonus points** are waiting to be added!{% endif %}
+            visibility:
+              - condition: state
+                entity: binary_sensor.chores_mandatory_chores_complete
+                state: "off"
+          - type: markdown
+            content: >
+              {%- set b = state_attr('sensor.chores_mandatory_chores_remaining', 'bonus_chores') or {} %}
+              {%- for name, p in b.items() %}
+              ⭐ {{ name }} – **+{{ p }}**
+              {% endfor %}
+            visibility:
+              - condition: state
+                entity: binary_sensor.chores_mandatory_chores_complete
+                state: "on"
+          - type: custom:maintenance-supporter-card
+            show_header: false
+            show_actions: true
+            show_assignee: false
+            compact: true
+            filter_labels: [bonus]
+            visibility:
+              - condition: state
+                entity: binary_sensor.chores_mandatory_chores_complete
+                state: "on"
+
+      # ---------------- Rewards ----------------
+      - type: grid
+        cards:
+          - type: heading
+            heading: Redeem points
+            icon: mdi:gift
+          - type: markdown
+            content: >
+              You have **{{ states('sensor.chores_points_bank') }} points** in the bank.<br>
+              💰 10 kr = {{ state_attr('binary_sensor.chores_can_afford_10_kr', 'cost') }} p ·
+              🎮 15 min Xbox = {{ state_attr('binary_sensor.chores_can_afford_15_min_xbox', 'cost') }} p ·
+              📱 15 min screen time = {{ state_attr('binary_sensor.chores_can_afford_15_min_screen_time', 'cost') }} p
+          - type: button
+            name: 10 kr
+            icon: mdi:cash
+            show_state: false
+            grid_options: {columns: 4, rows: 2}
+            tap_action:
+              action: perform-action
+              perform_action: kid_chores_points.redeem
+              data: {reward: "10 kr", units: 1}
+              confirmation:
+                text: Redeem 10 kr pocket money?
+            visibility:
+              - condition: state
+                entity: binary_sensor.chores_can_afford_10_kr
+                state: "on"
+          - type: button
+            name: 15 min Xbox
+            icon: mdi:microsoft-xbox
+            show_state: false
+            grid_options: {columns: 4, rows: 2}
+            tap_action:
+              action: perform-action
+              perform_action: kid_chores_points.redeem
+              data: {reward: "15 min Xbox", units: 1}
+              confirmation:
+                text: Redeem 15 min extra Xbox?
+            visibility:
+              - condition: state
+                entity: binary_sensor.chores_can_afford_15_min_xbox
+                state: "on"
+          - type: button
+            name: 15 min screen time
+            icon: mdi:tablet-cellphone
+            show_state: false
+            grid_options: {columns: 4, rows: 2}
+            tap_action:
+              action: perform-action
+              perform_action: kid_chores_points.redeem
+              data: {reward: "15 min screen time", units: 1}
+              confirmation:
+                text: Redeem 15 min extra screen time?
+            visibility:
+              - condition: state
+                entity: binary_sensor.chores_can_afford_15_min_screen_time
+                state: "on"
+          - type: markdown
+            content: Collect more points to redeem something! 💪
+            visibility:
+              - condition: state
+                entity: binary_sensor.chores_can_afford_10_kr
+                state: "off"
+              - condition: state
+                entity: binary_sensor.chores_can_afford_15_min_xbox
+                state: "off"
+              - condition: state
+                entity: binary_sensor.chores_can_afford_15_min_screen_time
+                state: "off"
+
+  # -------------------------------------------------------------------
+  #  Parent view (hidden from the child)
+  # -------------------------------------------------------------------
+  - title: Parents
+    path: parents
+    icon: mdi:shield-account
+    type: sections
+    visible:
+      - user: PARENT_USER_ID_1
+      - user: PARENT_USER_ID_2
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Settings
+          - type: button
+            name: Chores, rewards, goal & notifications
+            icon: mdi:cog
+            show_state: false
+            tap_action:
+              action: navigate
+              navigation_path: /config/integrations/integration/kid_chores_points
+          - type: heading
+            heading: Adjust points
+          - type: tile
+            entity: sensor.chores_points_this_week
+            name: Week
+            tap_action: {action: none}
+          - type: tile
+            entity: sensor.chores_points_bank
+            name: Bank
+            tap_action: {action: none}
+          - type: button
+            name: Bank +5
+            icon: mdi:plus
+            show_state: false
+            tap_action:
+              action: perform-action
+              perform_action: kid_chores_points.adjust_points
+              data: {target: bank, points: 5, reason: Parent adjustment}
+          - type: button
+            name: Bank −5
+            icon: mdi:minus
+            show_state: false
+            tap_action:
+              action: perform-action
+              perform_action: kid_chores_points.adjust_points
+              data: {target: bank, points: -5, reason: Parent adjustment}
+              confirmation:
+                text: Remove 5 points from the bank?
+          - type: button
+            name: Week +5
+            icon: mdi:plus
+            show_state: false
+            tap_action:
+              action: perform-action
+              perform_action: kid_chores_points.adjust_points
+              data: {target: week, points: 5, reason: Parent adjustment}
+          - type: button
+            name: Week −5
+            icon: mdi:minus
+            show_state: false
+            tap_action:
+              action: perform-action
+              perform_action: kid_chores_points.adjust_points
+              data: {target: week, points: -5, reason: Parent adjustment}
+              confirmation:
+                text: Remove 5 points from this week?
+          - type: button
+            name: Close week now
+            icon: mdi:calendar-check
+            show_state: false
+            tap_action:
+              action: perform-action
+              perform_action: kid_chores_points.close_week
+              confirmation:
+                text: Close the week now and move points to the bank?
+      - type: grid
+        cards:
+          - type: heading
+            heading: Rewards to hand out
+          - type: todo-list
+            entity: todo.chores_redeemed_rewards
+          - type: logbook
+            target:
+              entity_id:
+                - sensor.chores_points_bank
+                - sensor.chores_points_this_week
+            hours_to_show: 168
