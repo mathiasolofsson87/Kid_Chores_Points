@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import voluptuous as vol
+
+from homeassistant.components.frontend import add_extra_js_url
+from homeassistant.components.http import StaticPathConfig
 
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -12,6 +17,7 @@ from homeassistant.helpers.typing import ConfigType
 
 from .const import (
     ATTR_ENTRY,
+    CARD_URL,
     DOMAIN,
     PLATFORMS,
     SERVICE_ADJUST,
@@ -44,7 +50,12 @@ def _manager(hass: HomeAssistant, call: ServiceCall) -> ChoresManager:
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Register domain-wide services."""
+    """Register the rewards card and domain-wide services."""
+    card_file = Path(__file__).parent / "www" / "kid-chores-rewards-card.js"
+    await hass.http.async_register_static_paths(
+        [StaticPathConfig(CARD_URL, str(card_file), cache_headers=False)]
+    )
+    add_extra_js_url(hass, f"{CARD_URL}?v={card_file.stat().st_mtime_ns}")
 
     async def complete(call: ServiceCall) -> None:
         await _manager(hass, call).async_complete(call.data["name"])

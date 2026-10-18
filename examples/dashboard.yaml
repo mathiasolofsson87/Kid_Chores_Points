@@ -11,11 +11,8 @@
 #      sensor.chores_points_this_week). If you named it differently,
 #      find & replace "chores_" with your tracker's slug
 #      (check Settings -> Devices & services -> Kid Chores & Points).
-#   2. The reward buttons use the example rewards "10 kr", "15 min Xbox"
-#      and "15 min screen time". Create rewards with EXACTLY these names
-#      (Configure -> Rewards), or edit the buttons and the
-#      binary_sensor.chores_can_afford_* ids (slug of the reward name,
-#      e.g. "15 min Xbox" -> can_afford_15_min_xbox).
+#   2. Rewards are shown by the built-in kid-chores-rewards-card; with
+#      several trackers, pick the tracker in the card editor.
 #   3. In Maintenance Supporter, label the mandatory tasks "mandatory" and
 #      the bonus tasks "bonus" (used by the maintenance-supporter-card).
 #      Remove those cards if you complete chores another way.
@@ -151,74 +148,11 @@ views:
                 state: "on"
 
       # ---------------- Rewards ----------------
+      # Built into the integration: lists the rewards you configured and
+      # handles redeeming. No per-reward setup needed.
       - type: grid
         cards:
-          - type: heading
-            heading: Redeem points
-            icon: mdi:gift
-          - type: markdown
-            content: >
-              You have **{{ states('sensor.chores_points_bank') }} points** in the bank.<br>
-              💰 10 kr = {{ state_attr('binary_sensor.chores_can_afford_10_kr', 'cost') }} p ·
-              🎮 15 min Xbox = {{ state_attr('binary_sensor.chores_can_afford_15_min_xbox', 'cost') }} p ·
-              📱 15 min screen time = {{ state_attr('binary_sensor.chores_can_afford_15_min_screen_time', 'cost') }} p
-          - type: button
-            name: 10 kr
-            icon: mdi:cash
-            show_state: false
-            grid_options: {columns: 4, rows: 2}
-            tap_action:
-              action: perform-action
-              perform_action: kid_chores_points.redeem
-              data: {reward: "10 kr", units: 1}
-              confirmation:
-                text: Redeem 10 kr pocket money?
-            visibility:
-              - condition: state
-                entity: binary_sensor.chores_can_afford_10_kr
-                state: "on"
-          - type: button
-            name: 15 min Xbox
-            icon: mdi:microsoft-xbox
-            show_state: false
-            grid_options: {columns: 4, rows: 2}
-            tap_action:
-              action: perform-action
-              perform_action: kid_chores_points.redeem
-              data: {reward: "15 min Xbox", units: 1}
-              confirmation:
-                text: Redeem 15 min extra Xbox?
-            visibility:
-              - condition: state
-                entity: binary_sensor.chores_can_afford_15_min_xbox
-                state: "on"
-          - type: button
-            name: 15 min screen time
-            icon: mdi:tablet-cellphone
-            show_state: false
-            grid_options: {columns: 4, rows: 2}
-            tap_action:
-              action: perform-action
-              perform_action: kid_chores_points.redeem
-              data: {reward: "15 min screen time", units: 1}
-              confirmation:
-                text: Redeem 15 min extra screen time?
-            visibility:
-              - condition: state
-                entity: binary_sensor.chores_can_afford_15_min_screen_time
-                state: "on"
-          - type: markdown
-            content: Collect more points to redeem something! 💪
-            visibility:
-              - condition: state
-                entity: binary_sensor.chores_can_afford_10_kr
-                state: "off"
-              - condition: state
-                entity: binary_sensor.chores_can_afford_15_min_xbox
-                state: "off"
-              - condition: state
-                entity: binary_sensor.chores_can_afford_15_min_screen_time
-                state: "off"
+          - type: custom:kid-chores-rewards-card
 
   # -------------------------------------------------------------------
   #  Parent view (hidden from the child)

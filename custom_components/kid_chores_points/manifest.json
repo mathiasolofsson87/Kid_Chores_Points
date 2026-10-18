@@ -4,6 +4,7 @@
   "after_dependencies": ["logbook", "notify"],
   "codeowners": ["@mathiasolofsson87"],
   "config_flow": true,
+  "dependencies": ["frontend", "http"],
   "documentation": "https://github.com/mathiasolofsson87/Kid_Chores_Points",
   "integration_type": "service",
   "iot_class": "calculated",

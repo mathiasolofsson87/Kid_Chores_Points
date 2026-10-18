@@ -60,6 +60,27 @@ With more than one tracker, pass `config_entry` to pick which one.
 
 Remove the package, then re-enter chores/rewards in the UI. The old balances can be carried over with `adjust_points`.
 
+## Rewards card
+
+The integration ships its own dashboard card – no extra install or resource setup. In the dashboard editor choose **Add card → Kid Chores & Points – Rewards**.
+
+- Lists the rewards you configured, with the point cost and an icon (guessed from the name, e.g. Xbox, screen time, money – override with `icons:` in YAML), and shows the current bank balance.
+- Only affordable rewards are shown (set `show_unaffordable: true` to also show the rest greyed out). When nothing is affordable it shows a "collect more points" hint with the costs.
+- Tapping a reward asks for confirmation inline, then redeems it.
+- With several trackers, pick which one in the card editor (`device:`). English and Swedish texts are built in (follows the user's language); `title:` and `color:` can be overridden.
+
+```yaml
+type: custom:kid-chores-rewards-card
+# optional:
+# title: Spend your points
+# color: "#30d158"
+# show_unaffordable: false
+# icons:
+#   15 min Xbox: mdi:microsoft-xbox
+```
+
+If the card doesn't appear after installing/updating, restart Home Assistant and hard-refresh the browser.
+
 ## Maintenance Supporter labels
 
 Points are awarded by task name, so any configured chore counts when completed. The example dashboard, however, shows Maintenance Supporter's task lists filtered by **label**: give your mandatory tasks the label `mandatory` and your bonus tasks the label `bonus` in Maintenance Supporter, or they won't appear in the dashboard lists.

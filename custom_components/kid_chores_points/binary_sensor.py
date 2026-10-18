@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from typing import Any
 
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.core import HomeAssistant
@@ -48,5 +49,10 @@ class CanAfford(ChoresEntity, BinarySensorEntity):
         return rate > 0 and self.manager.bank >= rate
 
     @property
-    def extra_state_attributes(self) -> dict[str, int]:
-        return {"cost": int(self.manager.rewards.get(self._reward, 0))}
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {
+            "reward": self._reward,
+            "cost": int(self.manager.rewards.get(self._reward, 0)),
+            "bank": self.manager.bank,
+            "entry_id": self.manager.entry.entry_id,
+        }
