@@ -1,0 +1,13 @@
+{
+  "domain": "kid_chores_points",
+  "name": "Kid Chores & Points",
+  "after_dependencies": ["logbook", "notify"],
+  "codeowners": ["@mathiasolofsson87"],
+  "config_flow": true,
+  "documentation": "https://github.com/mathiasolofsson87/Kid_Chores_Points",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/mathiasolofsson87/Kid_Chores_Points/issues",
+  "requirements": [],
+  "version": "1.0.0"
+}

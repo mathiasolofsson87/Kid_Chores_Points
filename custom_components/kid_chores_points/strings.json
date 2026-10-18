@@ -1,0 +1,191 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Kid Chores & Points",
+        "description": "Create a points tracker (one per child). Chores, rewards and the weekly goal are configured afterwards via **Configure** on the integration.",
+        "data": {
+          "name": "Name"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "A tracker with this name already exists."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Chores & Points",
+        "description": "Changes are saved as you go. Pick **Finish** when done.",
+        "menu_options": {
+          "mandatory": "Mandatory chores",
+          "bonus": "Bonus chores",
+          "rewards": "Rewards",
+          "settings": "Weekly goal & policy",
+          "notifications": "Notifications",
+          "finish": "Finish"
+        }
+      },
+      "settings": {
+        "title": "Weekly goal & policy",
+        "data": {
+          "weekly_goal": "Weekly goal (points)",
+          "goal_bonus": "Extra bank points when goal is reached",
+          "missed_goal_policy": "If the weekly goal is missed"
+        }
+      },
+      "notifications": {
+        "title": "Notifications",
+        "description": "Select the **person** for the child and the parents; their phones (Home Assistant Companion app) are found automatically. The `notify` service fields below are optional extras (e.g. a tablet or group).",
+        "data": {
+          "kid_persons": "Child (person)",
+          "parent_persons": "Parents (persons)",
+          "notify_kid": "Extra notify services for the child",
+          "notify_parents": "Extra notify services for the parents"
+        }
+      },
+      "mandatory": {
+        "title": "Mandatory chores",
+        "description": "Names must match the Maintenance Supporter task names exactly. Each pays once per day, and bonus chores unlock when all are done.\n\n{items}",
+        "menu_options": {
+          "mandatory_add": "Add or update a chore",
+          "mandatory_remove": "Remove chores",
+          "init": "Back"
+        }
+      },
+      "mandatory_add": {
+        "title": "Add or update mandatory chore",
+        "data": {
+          "name": "Task name",
+          "points": "Points"
+        }
+      },
+      "mandatory_remove": {
+        "title": "Remove mandatory chores",
+        "data": {
+          "names": "Chores to remove"
+        }
+      },
+      "bonus": {
+        "title": "Bonus chores",
+        "description": "Only paid out once all mandatory chores are done that day (held as pending until then).\n\n{items}",
+        "menu_options": {
+          "bonus_add": "Add or update a chore",
+          "bonus_remove": "Remove chores",
+          "init": "Back"
+        }
+      },
+      "bonus_add": {
+        "title": "Add or update bonus chore",
+        "data": {
+          "name": "Task name",
+          "points": "Points"
+        }
+      },
+      "bonus_remove": {
+        "title": "Remove bonus chores",
+        "data": {
+          "names": "Chores to remove"
+        }
+      },
+      "rewards": {
+        "title": "Rewards",
+        "description": "Name the reward for ONE unit (e.g. `15 min Xbox`) and its cost in points.\n\n{items}",
+        "menu_options": {
+          "rewards_add": "Add or update a reward",
+          "rewards_remove": "Remove rewards",
+          "init": "Back"
+        }
+      },
+      "rewards_add": {
+        "title": "Add or update reward",
+        "data": {
+          "name": "Reward (per unit)",
+          "points": "Cost in points"
+        }
+      },
+      "rewards_remove": {
+        "title": "Remove rewards",
+        "data": {
+          "names": "Rewards to remove"
+        }
+      }
+    }
+  },
+  "selector": {
+    "missed_goal_policy": {
+      "options": {
+        "bank_anyway": "Bank all points anyway",
+        "bank_half": "Bank half",
+        "forfeit": "Forfeit the points"
+      }
+    }
+  },
+  "services": {
+    "complete_chore": {
+      "name": "Complete chore",
+      "description": "Register a chore as done (same as a Maintenance Supporter completion).",
+      "fields": {
+        "name": {
+          "name": "Chore",
+          "description": "Chore name."
+        },
+        "config_entry": {
+          "name": "Tracker",
+          "description": "Config entry ID (only needed with several trackers)."
+        }
+      }
+    },
+    "redeem": {
+      "name": "Redeem reward",
+      "description": "Exchange bank points for a reward.",
+      "fields": {
+        "reward": {
+          "name": "Reward",
+          "description": "Reward name as configured."
+        },
+        "units": {
+          "name": "Units",
+          "description": "How many units."
+        },
+        "config_entry": {
+          "name": "Tracker",
+          "description": "Config entry ID (only needed with several trackers)."
+        }
+      }
+    },
+    "adjust_points": {
+      "name": "Adjust points",
+      "description": "Manually add or subtract points.",
+      "fields": {
+        "target": {
+          "name": "Counter",
+          "description": "week or bank."
+        },
+        "points": {
+          "name": "Points",
+          "description": "Positive or negative."
+        },
+        "reason": {
+          "name": "Reason",
+          "description": "Shown in the logbook."
+        },
+        "config_entry": {
+          "name": "Tracker",
+          "description": "Config entry ID (only needed with several trackers)."
+        }
+      }
+    },
+    "close_week": {
+      "name": "Close week",
+      "description": "Close the week now (normally runs Sunday 23:59).",
+      "fields": {
+        "config_entry": {
+          "name": "Tracker",
+          "description": "Config entry ID (only needed with several trackers)."
+        }
+      }
+    }
+  }
+}

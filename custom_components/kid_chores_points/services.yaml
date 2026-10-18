@@ -1,0 +1,57 @@
+complete_chore:
+  fields:
+    name:
+      required: true
+      selector:
+        text:
+    config_entry:
+      selector:
+        config_entry:
+          integration: kid_chores_points
+redeem:
+  fields:
+    reward:
+      required: true
+      selector:
+        text:
+    units:
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 100
+          mode: box
+    config_entry:
+      selector:
+        config_entry:
+          integration: kid_chores_points
+adjust_points:
+  fields:
+    target:
+      required: true
+      default: bank
+      selector:
+        select:
+          options:
+            - week
+            - bank
+    points:
+      required: true
+      selector:
+        number:
+          min: -500
+          max: 500
+          mode: box
+    reason:
+      selector:
+        text:
+    config_entry:
+      selector:
+        config_entry:
+          integration: kid_chores_points
+close_week:
+  fields:
+    config_entry:
+      selector:
+        config_entry:
+          integration: kid_chores_points
