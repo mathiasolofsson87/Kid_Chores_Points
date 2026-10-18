@@ -27,12 +27,14 @@ from .const import (
     CONF_PARENT_PERSONS,
     CONF_POLICY,
     CONF_REWARDS,
+    CONF_WEEK_START,
     DEFAULT_OPTIONS,
     DOMAIN,
     EVENT_TASK_COMPLETED,
     POLICY_FORFEIT,
     POLICY_HALF,
     SIGNAL_UPDATE,
+    WEEK_DAYS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -146,7 +148,7 @@ class ChoresManager:
             async_track_time_change(self.hass, self._on_midnight, 0, 0, 0)
         )
         self.entry.async_on_unload(
-            async_track_time_change(self.hass, self._on_sunday_night, 23, 59, 0)
+            async_track_time_change(self.hass, self._on_week_end, 23, 59, 0)
         )
 
     async def async_stop(self) -> None:
@@ -162,8 +164,10 @@ class ChoresManager:
         self._ensure_today()
         self._changed()
 
-    async def _on_sunday_night(self, now: Any) -> None:
-        if dt_util.as_local(now).weekday() == 6:
+    async def _on_week_end(self, now: Any) -> None:
+        """Close the week at 23:59 on the day before the week-start day."""
+        start = WEEK_DAYS.index(self.opt(CONF_WEEK_START))
+        if dt_util.as_local(now).weekday() == (start - 1) % 7:
             await self.async_close_week()
 
     # ------------------------------------------------------------------

@@ -37,10 +37,12 @@ from .const import (
     CONF_PARENT_PERSONS,
     CONF_POLICY,
     CONF_REWARDS,
+    CONF_WEEK_START,
     DEFAULT_OPTIONS,
     DOMAIN,
     MS_DOMAIN,
     POLICIES,
+    WEEK_DAYS,
 )
 
 
@@ -141,12 +143,22 @@ class ChoresOptionsFlow(OptionsFlow):
             opts[CONF_GOAL] = int(user_input[CONF_GOAL])
             opts[CONF_GOAL_BONUS] = int(user_input[CONF_GOAL_BONUS])
             opts[CONF_POLICY] = user_input[CONF_POLICY]
+            opts[CONF_WEEK_START] = user_input[CONF_WEEK_START]
             self._save()
             return await self.async_step_init()
         return self.async_show_form(
             step_id="settings",
             data_schema=vol.Schema(
                 {
+                    vol.Required(
+                        CONF_WEEK_START, default=opts[CONF_WEEK_START]
+                    ): SelectSelector(
+                        SelectSelectorConfig(
+                            options=WEEK_DAYS,
+                            translation_key=CONF_WEEK_START,
+                            mode=SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
                     vol.Required(CONF_GOAL, default=opts[CONF_GOAL]): _points(),
                     vol.Required(CONF_GOAL_BONUS, default=opts[CONF_GOAL_BONUS]): _points(
                         1000

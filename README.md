@@ -11,7 +11,7 @@ A Home Assistant integration that turns chore completions into points, a weekly 
    - **Mandatory chores** – pick a task from the Maintenance Supporter list (free-text names also work) + points. Matching is by task name, so if you rename a task in Maintenance Supporter, re-pick it here. Counted once per day.
    - **Bonus chores** – only paid once all mandatory chores are done that day; earlier completions are held as *pending* and paid out when the last mandatory chore is done. Pending points are dropped at midnight.
    - **Rewards** – name per unit (e.g. `15 min Xbox`) + point cost.
-   - **Weekly goal & policy** – goal, extra bank points when reached, and what happens if missed (bank all / bank half / forfeit).
+   - **Weekly goal & policy** – first day of the week, goal, extra bank points when reached, and what happens if missed (bank all / bank half / forfeit).
    - **Notifications** – pick the child and parents as Home Assistant **persons**; their Companion-app phones are found automatically. Extra `notify` services (tablet, group) can be added too.
 
 Changes apply immediately (the integration reloads, balances are kept).
@@ -19,7 +19,7 @@ Changes apply immediately (the integration reloads, balances are kept).
 ## How it works
 
 - Listens for `maintenance_supporter_task_completed` (uses `task_name`).
-- Sunday 23:59 the week closes: points move to the bank per the policy and the week counter resets.
+- At 23:59 on the day before your configured first day of the week (default: Monday, so Sunday night) the week closes: points move to the bank per the policy and the week counter resets.
 - Redeeming a reward deducts from the bank and adds an item to the **Redeemed rewards** to-do list for a parent to hand out.
 
 ## Entities (per tracker)
