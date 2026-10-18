@@ -39,6 +39,10 @@ Example with goal 50 and bonus 10:
 
 The bonus only shows up in the bank and in the *last week result* sensor, never in *points this week*. Both child and parents are notified when the week closes.
 
+## Language
+
+Notifications, logbook entries and the "last week result" text use the Home Assistant system language (**Settings → System → General**). English and Swedish are included; other languages fall back to English. The dashboard cards follow each user's own language.
+
 ## Entities (per tracker)
 
 Sensors: points this week, points bank, weekly goal, points to goal, week progress, points today, mandatory chores remaining (attributes list remaining/done), pending bonus points, last week result.

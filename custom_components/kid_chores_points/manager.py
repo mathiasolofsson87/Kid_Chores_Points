@@ -16,6 +16,7 @@ from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util, slugify
 
+from .messages import translate
 from .const import (
     CONF_BONUS,
     CONF_GOAL,
@@ -170,6 +171,9 @@ class ChoresManager:
         if dt_util.as_local(now).weekday() == (start - 1) % 7:
             await self.async_close_week()
 
+    def tr(self, key: str, **kwargs: object) -> str:
+        return translate(self.hass.config.language, key, **kwargs)
+
     # ------------------------------------------------------------------
     # Notifications / logbook
     # ------------------------------------------------------------------
@@ -238,10 +242,12 @@ class ChoresManager:
                     award += pending_sum
                     today["bonus_done"].extend(p["name"] for p in today["pending"])
                     today["pending"] = []
-                    msg = "Great job! The bonus chores are unlocked."
+                    msg = self.tr("mandatory_done")
                     if pending_sum:
-                        msg += f" Your {pending_sum} waiting bonus points were added."
-                    notices.append((CONF_NOTIFY_KID, "Today's chores done! ⭐", msg))
+                        msg += self.tr("pending_released", n=pending_sum)
+                    notices.append(
+                        (CONF_NOTIFY_KID, self.tr("mandatory_done_title"), msg)
+                    )
                 self.data["week"] = self.week + award
                 today["points"] += award
             else:
@@ -256,9 +262,13 @@ class ChoresManager:
                     notices.append(
                         (
                             CONF_NOTIFY_KID,
-                            "Bonus points saved ⏳",
-                            f'{pts} points for "{task}" are added once today\'s '
-                            f"chores are done. Left: {', '.join(remaining)}",
+                            self.tr("pending_title"),
+                            self.tr(
+                                "pending",
+                                pts=pts,
+                                task=task,
+                                left=", ".join(remaining),
+                            ),
                         )
                     )
             self._changed()
@@ -283,8 +293,10 @@ class ChoresManager:
                     {
                         "uid": uuid.uuid4().hex,
                         "summary": label,
-                        "description": (
-                            f"Redeemed {dt_util.now():%Y-%m-%d %H:%M} for {cost} points"
+                        "description": self.tr(
+                            "redeemed_note",
+                            when=f"{dt_util.now():%Y-%m-%d %H:%M}",
+                            cost=cost,
                         ),
                         "done": False,
                     }
@@ -293,21 +305,21 @@ class ChoresManager:
         if short:
             await self._notify(
                 CONF_NOTIFY_KID,
-                "Not enough points",
-                f"{label} costs {cost} points, you have {bank}.",
+                self.tr("not_enough_title"),
+                self.tr("not_enough", label=label, cost=cost, bank=bank),
             )
             raise ServiceValidationError("Not enough points in the bank")
         left = bank - cost
-        await self._log(f"redeemed {label} for {cost} points ({left} left)")
+        await self._log(self.tr("redeemed_log", label=label, cost=cost, left=left))
         await self._notify(
             CONF_NOTIFY_PARENTS,
-            "Reward redeemed 🎁",
-            f"{label} ({cost} p). {left} points left in the bank.",
+            self.tr("redeemed_parents_title"),
+            self.tr("redeemed_parents", label=label, cost=cost, left=left),
         )
         await self._notify(
             CONF_NOTIFY_KID,
-            "Redeemed! 🎉",
-            f"{label} – tell a parent. {left} points left.",
+            self.tr("redeemed_kid_title"),
+            self.tr("redeemed_kid", label=label, left=left),
         )
 
     async def async_adjust(self, target: str, points: int, reason: str | None) -> None:
@@ -316,7 +328,12 @@ class ChoresManager:
             self.data[key] = max(int(self.data[key]) + points, 0)
             self._changed()
         await self._log(
-            f"adjusted {target} by {points} ({reason or 'no reason given'})"
+            self.tr(
+                "adjust_log",
+                target=self.tr("week" if target == "week" else "bank"),
+                points=points,
+                reason=reason or self.tr("no_reason"),
+            )
         )
 
     async def async_close_week(self) -> None:
@@ -335,22 +352,31 @@ class ChoresManager:
             self.data["bank"] = self.bank + to_bank
             bank = self.bank
             self.data["week"] = 0
-            self.data["last_week"] = (
-                f"{week}/{goal} {'✓' if met else '✗'} · +{to_bank} to the bank"
+            self.data["last_week"] = self.tr(
+                "last_week",
+                week=week,
+                goal=goal,
+                mark="✓" if met else "✗",
+                to_bank=to_bank,
             )
             self._changed()
-        await self._log(f"week closed: {week}/{goal} points, {to_bank} to the bank")
+        await self._log(self.tr("week_log", week=week, goal=goal, to_bank=to_bank))
         await self._notify(
             CONF_NOTIFY_KID,
-            "Weekly goal reached! 🏆" if met else "The week is over",
-            f"You got {week} of {goal} points. {to_bank} points were added to the "
-            f"bank ({bank} total).",
+            self.tr("week_met_title" if met else "week_over_title"),
+            self.tr("week_kid", week=week, goal=goal, to_bank=to_bank, bank=bank),
         )
         await self._notify(
             CONF_NOTIFY_PARENTS,
-            "Weekly summary",
-            f"{week}/{goal} points ({'goal met' if met else 'goal missed'}). "
-            f"+{to_bank} to the bank, balance {bank}.",
+            self.tr("week_parents_title"),
+            self.tr(
+                "week_parents",
+                week=week,
+                goal=goal,
+                to_bank=to_bank,
+                bank=bank,
+                result=self.tr("goal_met" if met else "goal_missed"),
+            ),
         )
 
     # ------------------------------------------------------------------
