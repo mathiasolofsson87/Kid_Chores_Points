@@ -22,6 +22,23 @@ Changes apply immediately (the integration reloads, balances are kept).
 - At 23:59 on the day before your configured first day of the week (default: Monday, so Sunday night) the week closes: points move to the bank per the policy and the week counter resets.
 - Redeeming a reward deducts from the bank and adds an item to the **Redeemed rewards** to-do list for a parent to hand out.
 
+## Weekly goal, bonus and the bank
+
+When the week closes (23:59 on the day before the first day of the week), the week's points move to the bank and the weekly counter resets to 0.
+
+- **Goal reached** (points this week ≥ weekly goal): the bank receives the week's points **plus the goal bonus**. The bonus is a flat amount on top of the points earned. Set it to 0 for no bonus.
+- **Goal missed:** the bank receives points according to the *missed goal* setting – **all** points, **half** (rounded down), or **none** (forfeit). No bonus is paid.
+
+Example with goal 50 and bonus 10:
+
+| Points earned | Goal reached? | Bank receives |
+|---|---|---|
+| 55 | Yes | 55 + 10 = **65** |
+| 50 | Yes | 50 + 10 = **60** |
+| 40 | No | **40** (bank all) / **20** (bank half) / **0** (forfeit) |
+
+The bonus only shows up in the bank and in the *last week result* sensor, never in *points this week*. Both child and parents are notified when the week closes.
+
 ## Entities (per tracker)
 
 Sensors: points this week, points bank, weekly goal, points to goal, week progress, points today, mandatory chores remaining (attributes list remaining/done), pending bonus points, last week result.
