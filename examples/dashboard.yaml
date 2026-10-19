@@ -6,11 +6,12 @@
 #   scratch" -> open it -> ⋮ -> Raw configuration editor -> replace all.
 #
 #  >>> EDIT <<<
-#   1. Entity ids below assume the tracker is named "Chores"
-#      (entity ids are <tracker name>_<entity name>, e.g.
-#      sensor.chores_points_this_week). If you named it differently,
-#      find & replace "chores_" with your tracker's slug
-#      (check Settings -> Devices & services -> Kid Chores & Points).
+#   1. The Kid Chores & Points cards find the tracker by themselves; with
+#      several children, pick the tracker in each card's editor. Only the
+#      to-do list and logbook in the Parents view use entity ids, which
+#      assume the tracker is named "Chores" (e.g. sensor.chores_points_bank).
+#      If you named it differently, find & replace "chores_" with your
+#      tracker's slug (Settings -> Devices & services -> Kid Chores & Points).
 #   2. Rewards are shown by the built-in kid-chores-rewards-card; with
 #      several trackers, pick the tracker in the card editor.
 #   3. In Maintenance Supporter, label the mandatory tasks "mandatory" and
@@ -137,65 +138,14 @@ views:
             tap_action:
               action: navigate
               navigation_path: /config/integrations/integration/kid_chores_points
-          - type: heading
-            heading: Adjust points
-          - type: tile
-            entity: sensor.chores_points_this_week
-            name: Week
-            tap_action: {action: none}
-          - type: tile
-            entity: sensor.chores_points_bank
-            name: Bank
-            tap_action: {action: none}
-          - type: button
-            name: Bank +5
-            icon: mdi:plus
-            show_state: false
-            tap_action:
-              action: perform-action
-              perform_action: kid_chores_points.adjust_points
-              data: {target: bank, points: 5, reason: Parent adjustment}
-          - type: button
-            name: Bank −5
-            icon: mdi:minus
-            show_state: false
-            tap_action:
-              action: perform-action
-              perform_action: kid_chores_points.adjust_points
-              data: {target: bank, points: -5, reason: Parent adjustment}
-              confirmation:
-                text: Remove 5 points from the bank?
-          - type: button
-            name: Week +5
-            icon: mdi:plus
-            show_state: false
-            tap_action:
-              action: perform-action
-              perform_action: kid_chores_points.adjust_points
-              data: {target: week, points: 5, reason: Parent adjustment}
-          - type: button
-            name: Week −5
-            icon: mdi:minus
-            show_state: false
-            tap_action:
-              action: perform-action
-              perform_action: kid_chores_points.adjust_points
-              data: {target: week, points: -5, reason: Parent adjustment}
-              confirmation:
-                text: Remove 5 points from this week?
-          - type: button
-            name: Close week now
-            icon: mdi:calendar-check
-            show_state: false
-            tap_action:
-              action: perform-action
-              perform_action: kid_chores_points.close_week
-              confirmation:
-                text: Close the week now and move points to the bank?
+          - type: custom:kid-chores-status-card
+          # Add or deduct points in the bank or this week (use -5 to deduct)
+          - type: custom:kid-chores-adjust-card
       - type: grid
         cards:
           - type: heading
             heading: Rewards to hand out
+          # Entity id = todo.<tracker name>_redeemed_rewards
           - type: todo-list
             entity: todo.chores_redeemed_rewards
           - type: logbook

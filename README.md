@@ -79,9 +79,13 @@ chips:
     users: [<ha user id>, <ha user id>]   # omit to show to everyone
 ```
 
+## Adjust points card
+
+**Add card → Kid Chores & Points – Adjust points** is a parent tool in one card: choose **Bank** or **This week**, type a number (`5` to add, `-5` to deduct), optionally a reason (shown in the logbook), and press **Apply**. Totals never go below 0. Pick the child's tracker in the card editor (`device:`). Put it on a parents-only view.
+
 ## Rewards card
 
-The integration ships its own dashboard cards – no extra install or resource setup. In the dashboard editor choose **Add card → Kid Chores & Points – Rewards**.
+The integration ships its own dashboard cards (Status, Rewards, Adjust points) – no extra install or resource setup. In the dashboard editor choose **Add card → Kid Chores & Points – Rewards**.
 
 - Lists the rewards you configured, with the point cost and an icon (guessed from the name, e.g. Xbox, screen time, money – override with `icons:` in YAML), and shows the current bank balance.
 - Only affordable rewards are shown (set `show_unaffordable: true` to also show the rest greyed out). When nothing is affordable it shows a "collect more points" hint listing each reward and its cost on its own line (turn it off with `show_hint: false` or the switch in the card editor).
