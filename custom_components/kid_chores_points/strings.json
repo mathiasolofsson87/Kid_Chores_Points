@@ -45,7 +45,7 @@
       },
       "notifications": {
         "title": "Notifications",
-        "description": "Select the **person** for the child and the parents; their phones (Home Assistant Companion app) are found automatically. The `notify` service fields below are optional extras (e.g. a tablet or group).",
+        "description": "Select the **person** for the child and the parents; their phones (Home Assistant Companion app) are found automatically. The `notify` service fields below are optional extras (e.g. a tablet or group). The child person is also used to decide whose chore completions count: if the child has a linked Home Assistant user, completions made by other users are ignored (completions without a user still count).",
         "data": {
           "kid_persons": "Child (person)",
           "parent_persons": "Parents (persons)",

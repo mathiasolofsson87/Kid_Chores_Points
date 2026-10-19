@@ -16,6 +16,10 @@ A Home Assistant integration that turns chore completions into points, a weekly 
 
 Changes apply immediately (the integration reloads, balances are kept).
 
+## Whose completions count
+
+If the child **person** (Configure → Notifications) has a linked Home Assistant user, only chores completed by that user count. A task completed by another user (e.g. a parent) is ignored, so a tracker only rewards its own child. Completions that carry no user (automatic completions, NFC tags) still count. To credit the child for something a parent did, complete the task in Maintenance Supporter with the child as *Completed by*. If no child person is set, or the person has no linked user, every completion counts. The `complete_chore` service always counts.
+
 ## How it works
 
 - Listens for `maintenance_supporter_task_completed` (uses `task_name`).

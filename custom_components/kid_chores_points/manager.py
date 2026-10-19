@@ -155,10 +155,28 @@ class ChoresManager:
     async def async_stop(self) -> None:
         await self._store.async_save(self.data)
 
+    def _kid_user_ids(self) -> set[str]:
+        """Home Assistant user ids linked to the configured child person(s)."""
+        users: set[str] = set()
+        for person in self.opt(CONF_KID_PERSONS):
+            state = self.hass.states.get(person)
+            if state and (uid := state.attributes.get("user_id")):
+                users.add(uid)
+        return users
+
     async def _on_event(self, event: Event) -> None:
         name = event.data.get("task_name")
-        if name:
-            await self.async_complete(name, raise_unknown=False)
+        if not name:
+            return
+        # Maintenance Supporter reports who completed the task (HA user id).
+        # If the child has a linked user, only their completions count;
+        # completions without a user (automatic, NFC...) still count.
+        by = event.data.get("completed_by")
+        kid_users = self._kid_user_ids()
+        if by and kid_users and by not in kid_users:
+            _LOGGER.debug("Ignoring '%s' completed by another user", name)
+            return
+        await self.async_complete(name, raise_unknown=False)
 
     @callback
     def _on_midnight(self, _now: Any) -> None:
