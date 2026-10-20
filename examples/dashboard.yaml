@@ -44,34 +44,9 @@ views:
       # ---------------- Daily (mandatory) ----------------
       - type: grid
         cards:
-          - type: heading
-            heading: To do today
-            icon: mdi:format-list-checks
-          - type: markdown
-            content: >
-              {%- set s = 'sensor.chores_mandatory_chores_remaining' %}
-              {%- set done = state_attr(s, 'done') or [] %}
-              {%- set left = state_attr(s, 'remaining') or [] %}
-              {%- set pts = state_attr(s, 'mandatory_chores') or {} %}
-              {%- for t in done %}
-              ✅ ~~{{ t }}~~ (+{{ pts[t] }})
-              {% endfor %}
-              {%- for t in left %}
-              ⬜ **{{ t }}** (+{{ pts[t] }})
-              {% endfor %}
-              {%- if left | count == 0 %}
-              🎉 **All done for today – great job!**
-              {%- endif %}
-          - type: custom:maintenance-supporter-card
-            show_header: false
-            show_actions: true
-            show_assignee: false
-            compact: true
-            filter_labels: [mandatory]
-            visibility:
-              - condition: state
-                entity: binary_sensor.chores_mandatory_chores_complete
-                state: "off"
+          # One chore per line with ticks, plus Done buttons for the matching
+          # Maintenance Supporter tasks (label "mandatory").
+          - type: custom:kid-chores-todo-card
 
       # ---------------- Bonus ----------------
       - type: grid
@@ -79,35 +54,9 @@ views:
           - type: heading
             heading: Bonus chores
             icon: mdi:star-plus
-          - type: markdown
-            content: >
-              🔒 Bonus chores unlock when today's chores are done.
-              {%- set p = states('sensor.chores_pending_bonus_points') | int(0) %}
-              {%- if p > 0 %}<br>⏳ **{{ p }} bonus points** are waiting to be added!{% endif %}
-            visibility:
-              - condition: state
-                entity: binary_sensor.chores_mandatory_chores_complete
-                state: "off"
-          - type: markdown
-            content: >
-              {%- set b = state_attr('sensor.chores_mandatory_chores_remaining', 'bonus_chores') or {} %}
-              {%- for name, p in b.items() %}
-              ⭐ {{ name }} – **+{{ p }}**
-              {% endfor %}
-            visibility:
-              - condition: state
-                entity: binary_sensor.chores_mandatory_chores_complete
-                state: "on"
-          - type: custom:maintenance-supporter-card
-            show_header: false
-            show_actions: true
-            show_assignee: false
-            compact: true
-            filter_labels: [bonus]
-            visibility:
-              - condition: state
-                entity: binary_sensor.chores_mandatory_chores_complete
-                state: "on"
+          # Locked (with a hint) until today's mandatory chores are done;
+          # Done buttons for Maintenance Supporter tasks labelled "bonus".
+          - type: custom:kid-chores-bonus-card
 
       # ---------------- Rewards ----------------
       # Built into the integration: lists the rewards you configured and

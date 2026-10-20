@@ -48,6 +48,16 @@ const KCP_TEXT = {
     h_today: "Today",
     h_yesterday: "Yesterday",
     h_more: "Show more",
+    todo_title: "Must do today",
+    todo_done: "🎉 All done for today – great job!",
+    todo_btn: "Done",
+    todo_overdue: "Overdue",
+    todo_due: "Due today",
+    todo_failed: "Could not complete: {e}",
+    bonus_title: "Bonus chores",
+    bonus_locked: "🔒 Bonus chores unlock when today's chores are done.",
+    bonus_pending: "⏳ {n} bonus points are waiting to be added!",
+    bonus_none: "No bonus chores configured yet.",
   },
   sv: {
     title: "Lös in poäng",
@@ -94,6 +104,16 @@ const KCP_TEXT = {
     h_today: "Idag",
     h_yesterday: "Igår",
     h_more: "Visa fler",
+    todo_title: "Måste göras idag",
+    todo_done: "🎉 Allt klart för idag – bra jobbat!",
+    todo_btn: "Klar",
+    todo_overdue: "Försenad",
+    todo_due: "Ska göras idag",
+    todo_failed: "Kunde inte slutföra: {e}",
+    bonus_title: "Bonusuppgifter",
+    bonus_locked: "🔒 Bonusuppgifter låses upp när dagens uppgifter är klara.",
+    bonus_pending: "⏳ {n} bonuspoäng väntar på att läggas till!",
+    bonus_none: "Inga bonusuppgifter inställda än.",
   },
 };
 
@@ -871,5 +891,361 @@ window.customCards.push({
   type: "kid-chores-history-card",
   name: "Kid Chores & Points – History",
   description: "Parent view: timeline of every points change and the reason for it.",
+  preview: true,
+});
+
+
+/* ------------------------------------------------------------------ */
+/*  Chores to do today (mandatory chores + Maintenance Supporter)      */
+/* ------------------------------------------------------------------ */
+const KCP_ACTIONABLE = ["overdue", "triggered", "due_soon"];
+
+class KidChoresTodoCard extends HTMLElement {
+  static LABEL = "mandatory";
+  static TITLE = "todo_title";
+
+  constructor() {
+    super();
+    this.attachShadow({ mode: "open" });
+    this._sig = "";
+    this._tasks = []; // actionable Maintenance Supporter tasks
+    this._busy = new Set();
+    this._error = "";
+    this._msSig = null;
+  }
+
+  static getConfigElement() {
+    return document.createElement("kid-chores-todo-card-editor");
+  }
+
+  static getStubConfig() {
+    return {};
+  }
+
+  setConfig(config) {
+    this._config = config;
+    this._sig = "";
+    this._msSig = null;
+    if (this._hass) this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    this._syncTasks();
+    this._render();
+  }
+
+  getCardSize() {
+    return 5;
+  }
+
+  getGridOptions() {
+    return { columns: 12, min_columns: 6 };
+  }
+
+  /* Re-fetch the Maintenance Supporter tasks whenever one of its sensors changes. */
+  _syncTasks() {
+    const h = this._hass;
+    if (!h?.entities || !this._config) return;
+    let sig = "";
+    for (const [id, reg] of Object.entries(h.entities)) {
+      if (reg.platform !== "maintenance_supporter") continue;
+      const st = h.states[id];
+      if (st) sig += `${id}:${st.state}:${st.last_updated};`;
+    }
+    if (sig === this._msSig) return;
+    this._msSig = sig;
+    this._fetchTasks();
+  }
+
+  async _fetchTasks() {
+    const labels = this._config.filter_labels ?? [this.constructor.LABEL];
+    const statuses = this._config.filter_status ?? KCP_ACTIONABLE;
+    try {
+      const res = await this._hass.connection.sendMessagePromise({
+        type: "maintenance_supporter/objects",
+        compact: true,
+      });
+      const tasks = [];
+      for (const obj of res.objects || []) {
+        if (obj.object?.archived) continue;
+        for (const t of obj.tasks || []) {
+          if (t.archived || t.is_done || !t.sensor_entity_id) continue;
+          if (labels.length && !(t.labels || []).some((l) => labels.includes(l))) continue;
+          tasks.push({ name: t.name, entity: t.sensor_entity_id, status: t.status, actionable: statuses.includes(t.status) });
+        }
+      }
+      this._tasks = tasks;
+    } catch {
+      this._tasks = []; // Maintenance Supporter not installed / not reachable
+    }
+    this._sig = "";
+    this._render();
+  }
+
+  _lead() {
+    return "";
+  }
+
+  _tail(rows) {
+    const h = this._hass;
+    return rows.some((r) => !r.done) ? "" : `<div class="all">${kcpEsc(kcpT(h, "todo_done"))}</div>`;
+  }
+
+  _rows() {
+    const S = kcpSensors(this._hass, this._config.device);
+    const attrs = S?.mandatory_remaining?.attributes;
+    if (!attrs) return null;
+    const pts = attrs.mandatory_chores || {};
+    const byName = new Map(this._tasks.map((t) => [t.name, t]));
+    const rows = [];
+    for (const name of attrs.done || []) rows.push({ name, done: true, pts: pts[name] });
+    for (const name of attrs.remaining || []) {
+      rows.push({ name, done: false, pts: pts[name], ms: byName.get(name)?.actionable ? byName.get(name) : null });
+      byName.delete(name);
+    }
+    for (const t of byName.values()) {
+      if (t.actionable) rows.push({ name: t.name, done: false, ms: t });
+    }
+    return rows.filter((r, i, all) => all.findIndex((x) => x.name === r.name) === i);
+  }
+
+  _render() {
+    const h = this._hass, cfg = this._config;
+    if (!h || !cfg) return;
+    const rows = this._rows();
+    const sig = JSON.stringify([rows, h.language, cfg, [...this._busy], this._error, rows && this._lead(rows)]);
+    if (sig === this._sig) return;
+    this._sig = sig;
+
+    let body;
+    if (!rows) {
+      body = `<div class="empty">${kcpEsc(kcpT(h, "no_tracker"))}</div>`;
+    } else {
+      body = this._lead(rows) + rows
+        .map((r, i) => {
+          const c = r.done ? "#30d158" : "#ffd60a";
+          const sub = [r.pts !== undefined ? `+${r.pts} p` : "",
+            r.ms?.status === "overdue" ? kcpT(h, "todo_overdue") : ""].filter(Boolean).join(" · ");
+          const busy = r.ms && this._busy.has(r.ms.entity);
+          return `
+            <div class="row ${r.done ? "done" : ""}" style="--c:${c}">
+              <div class="ico"><ha-icon icon="${r.done ? "mdi:checkbox-marked-circle" : r.icon || "mdi:checkbox-blank-circle-outline"}"></ha-icon></div>
+              <div class="txt">
+                <div class="primary">${kcpEsc(r.name)}</div>
+                ${sub ? `<div class="secondary">${kcpEsc(sub)}</div>` : ""}
+              </div>
+              ${r.ms ? `<button class="btn" data-i="${i}" ${busy ? "disabled" : ""}><ha-icon icon="mdi:check"></ha-icon>${kcpEsc(kcpT(h, "todo_btn"))}</button>` : ""}
+            </div>`;
+        })
+        .join("");
+      body += this._tail(rows);
+    }
+
+    this.shadowRoot.innerHTML = `
+      <style>
+        ha-card { padding: 16px; }
+        .t { font-size: 1.4em; font-weight: 600; color: var(--primary-text-color); margin-bottom: 12px; }
+        .row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; margin-top: 8px;
+          background: var(--secondary-background-color, rgba(127,127,127,.1));
+          border-left: 4px solid var(--c); border-radius: 12px; }
+        .ico { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; flex: none;
+          color: var(--c); background: color-mix(in srgb, var(--c) 20%, transparent); }
+        .txt { flex: 1; min-width: 0; }
+        .primary { font-weight: 600; color: var(--primary-text-color); overflow-wrap: anywhere; }
+        .secondary { font-size: .9em; color: var(--secondary-text-color); }
+        .row.done .primary { text-decoration: line-through; color: var(--secondary-text-color); font-weight: 400; }
+        .btn { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border: 0;
+          border-radius: 10px; font: inherit; font-weight: 600; cursor: pointer; --mdc-icon-size: 18px;
+          background: var(--primary-color); color: var(--text-primary-color, #fff); }
+        .btn:disabled { opacity: .5; cursor: default; }
+        .all { margin-top: 12px; padding: 12px; text-align: center; font-weight: 600;
+          color: var(--primary-text-color); }
+        .empty { color: var(--secondary-text-color); }
+        .lock { padding: 4px 0; color: var(--primary-text-color); }
+        .err { margin-top: 10px; font-size: .9em; color: var(--error-color, #db4437); }
+      </style>
+      <ha-card>
+        <div class="t">${kcpEsc(cfg.title ?? kcpT(h, this.constructor.TITLE))}</div>
+        ${body}
+        ${this._error ? `<div class="err">${kcpEsc(this._error)}</div>` : ""}
+      </ha-card>`;
+
+    this.shadowRoot.querySelectorAll(".btn").forEach((el) => {
+      el.addEventListener("click", () => this._complete(rows[Number(el.dataset.i)].ms));
+    });
+  }
+
+  async _complete(task) {
+    if (!task || this._busy.has(task.entity)) return;
+    this._busy.add(task.entity);
+    this._error = "";
+    this._render();
+    try {
+      await this._hass.callService("maintenance_supporter", "complete", { entity_id: task.entity });
+    } catch (err) {
+      this._error = kcpT(this._hass, "todo_failed", { e: err?.message || err });
+    }
+    this._busy.delete(task.entity);
+    this._sig = "";
+    this._render();
+  }
+}
+
+class KidChoresTodoCardEditor extends HTMLElement {
+  static LABEL = "mandatory";
+
+  constructor() {
+    super();
+    this._labels = [];
+    this._labelsLoaded = false;
+  }
+
+  setConfig(config) {
+    this._config = config;
+    this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    if (!this._labelsLoaded) this._loadLabels();
+    if (this._form) this._form.hass = hass;
+    else this._render();
+  }
+
+  async _loadLabels() {
+    this._labelsLoaded = true;
+    try {
+      const res = await this._hass.connection.sendMessagePromise({
+        type: "maintenance_supporter/objects",
+        compact: true,
+      });
+      const found = new Set();
+      for (const o of res.objects || []) for (const t of o.tasks || []) for (const l of t.labels || []) found.add(l);
+      this._labels = [...found].sort();
+    } catch {
+      this._labels = [];
+    }
+    this._schema = null;
+    this._render();
+  }
+
+  _render() {
+    if (!this._hass || !this._config) return;
+    const cfgLabels = this._config.filter_labels ?? [this.constructor.LABEL];
+    const labels = [...new Set([...this._labels, ...cfgLabels])];
+    if (!this._form) {
+      this._form = document.createElement("ha-form");
+      this._form.computeLabel = (s) =>
+        ({
+          device: "Tracker (leave empty for the first one)",
+          title: "Title",
+          filter_labels: "Maintenance Supporter labels to show (none = all tasks)",
+          filter_status: "Show a task as open when its status is",
+        }[s.name] || s.name);
+      this._form.addEventListener("value-changed", (ev) => {
+        const config = { type: this._config.type, ...ev.detail.value };
+        for (const k of ["device", "title"]) if (config[k] === "" || config[k] === undefined) delete config[k];
+        this.dispatchEvent(new CustomEvent("config-changed", { detail: { config }, bubbles: true, composed: true }));
+      });
+      this.appendChild(this._form);
+    }
+    const statuses = ["overdue", "triggered", "due_soon", "ok"];
+    const key = labels.join("|");
+    if (this._schemaKey !== key) {
+      this._schemaKey = key;
+      this._form.schema = [
+        { name: "device", selector: { device: { integration: "kid_chores_points" } } },
+        { name: "title", selector: { text: {} } },
+        {
+          name: "filter_labels",
+          selector: { select: { multiple: true, custom_value: true, mode: "dropdown", options: labels } },
+        },
+        {
+          name: "filter_status",
+          selector: { select: { multiple: true, mode: "list", options: statuses } },
+        },
+      ];
+    }
+    this._form.hass = this._hass;
+    this._form.data = {
+      filter_labels: [this.constructor.LABEL],
+      filter_status: KCP_ACTIONABLE,
+      ...this._config,
+    };
+  }
+}
+
+customElements.define("kid-chores-todo-card", KidChoresTodoCard);
+customElements.define("kid-chores-todo-card-editor", KidChoresTodoCardEditor);
+window.customCards.push({
+  type: "kid-chores-todo-card",
+  name: "Kid Chores & Points – Chores to do",
+  description: "Today's mandatory chores, one per line with ticks, plus Done buttons for the matching Maintenance Supporter tasks.",
+  preview: true,
+});
+
+
+/* ------------------------------------------------------------------ */
+/*  Bonus chores (unlock when the mandatory chores are done)           */
+/* ------------------------------------------------------------------ */
+class KidChoresBonusCard extends KidChoresTodoCard {
+  static LABEL = "bonus";
+  static TITLE = "bonus_title";
+
+  static getConfigElement() {
+    return document.createElement("kid-chores-bonus-card-editor");
+  }
+
+  _locked() {
+    const S = kcpSensors(this._hass, this._config.device);
+    return (S?.mandatory_remaining?.attributes.remaining || []).length > 0;
+  }
+
+  _lead() {
+    const h = this._hass;
+    const S = kcpSensors(h, this._config.device);
+    const pending = parseInt(S?.pending_bonus?.state, 10) || 0;
+    let out = "";
+    if (this._locked()) out += `<div class="lock">${kcpEsc(kcpT(h, "bonus_locked"))}</div>`;
+    if (pending > 0) out += `<div class="lock">${kcpEsc(kcpT(h, "bonus_pending", { n: pending }))}</div>`;
+    return out;
+  }
+
+  _tail(rows) {
+    if (this._locked() || rows.length) return "";
+    return `<div class="empty">${kcpEsc(kcpT(this._hass, "bonus_none"))}</div>`;
+  }
+
+  _rows() {
+    const S = kcpSensors(this._hass, this._config.device);
+    const attrs = S?.mandatory_remaining?.attributes;
+    if (!attrs) return null;
+    if (this._locked()) return [];
+    const doneToday = S.points_today?.attributes.bonus_done || [];
+    const byName = new Map(this._tasks.map((t) => [t.name, t]));
+    const rows = [];
+    for (const [name, pts] of Object.entries(attrs.bonus_chores || {})) {
+      const ms = byName.get(name)?.actionable ? byName.get(name) : null;
+      byName.delete(name);
+      rows.push({ name, pts, ms, done: !ms && doneToday.includes(name), icon: "mdi:star-circle-outline" });
+    }
+    for (const t of byName.values()) {
+      if (t.actionable) rows.push({ name: t.name, ms: t, done: false, icon: "mdi:star-circle-outline" });
+    }
+    return rows;
+  }
+}
+
+class KidChoresBonusCardEditor extends KidChoresTodoCardEditor {
+  static LABEL = "bonus";
+}
+
+customElements.define("kid-chores-bonus-card", KidChoresBonusCard);
+customElements.define("kid-chores-bonus-card-editor", KidChoresBonusCardEditor);
+window.customCards.push({
+  type: "kid-chores-bonus-card",
+  name: "Kid Chores & Points – Bonus chores",
+  description: "Bonus chores with Done buttons for Maintenance Supporter tasks; locked until today's mandatory chores are done.",
   preview: true,
 });

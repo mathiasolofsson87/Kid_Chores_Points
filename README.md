@@ -87,13 +87,23 @@ chips:
 
 **Add card → Kid Chores & Points – Adjust points** is a parent tool in one card: choose **Bank** or **This week**, type a number (`5` to add, `-5` to deduct), optionally a reason (shown in the logbook), and press **Apply**. Totals never go below 0. Pick the child's tracker in the card editor (`device:`). Put it on a parents-only view.
 
+## Chores to do card
+
+**Add card → Kid Chores & Points – Chores to do** replaces the markdown list and the Maintenance Supporter card for the mandatory chores. Each configured mandatory chore is one line: ticked and struck through when done, with its points. Chores that are still open and due in Maintenance Supporter get a **Done** button (calls `maintenance_supporter.complete` as the logged-in user, so the usual child-user rule applies). Maintenance Supporter tasks with the label but not in your mandatory list are added as extra lines. When everything is done a "great job" line is shown.
+
+Options (all also in the card editor – labels are offered from your Maintenance Supporter tasks, and you can type others): `title`, `device`, `filter_labels` (Maintenance Supporter labels to include, default `[mandatory]`; `[]` for all tasks), `filter_status` (default `[overdue, triggered, due_soon]`). A task that needs a checklist, readings or a tag scan can't be completed with the button and shows the error instead – complete those in the Maintenance Supporter card.
+
+## Bonus chores card
+
+**Add card → Kid Chores & Points – Bonus chores** is the bonus counterpart of the *Chores to do* card. While today's mandatory chores are open it shows only the lock hint ("Bonus chores unlock when today's chores are done") and, if any bonus points are being held, how many are waiting. Once the mandatory chores are done it lists your bonus chores with their points, plus **Done** buttons for the matching Maintenance Supporter tasks. Options and editor are the same as the *Chores to do* card, except `filter_labels` defaults to `[bonus]`.
+
 ## History card
 
 **Add card → Kid Chores & Points – History** is a parent timeline of every points change, newest first and grouped by day: completed chores, bonus chores (including ones held as pending and later released), redeemed rewards, manual adjustments with their reason, and week closes. Each entry shows the points, the reason/label and (optionally) the week and bank balance afterwards. The last 300 changes are kept; history starts when you update. Options (YAML): `limit` (entries per page, default 30), `show_balances: false` to hide the balances, `title`, `device`. The data is also available as the `history` attribute of the *Points history* sensor.
 
 ## Rewards card
 
-The integration ships its own dashboard cards (Status, Rewards, Adjust points, History) – no extra install or resource setup. In the dashboard editor choose **Add card → Kid Chores & Points – Rewards**.
+The integration ships its own dashboard cards (Status, Rewards, Adjust points, Chores to do, Bonus chores, History) – no extra install or resource setup. In the dashboard editor choose **Add card → Kid Chores & Points – Rewards**.
 
 - Lists the rewards you configured, with the point cost and an icon (guessed from the name, e.g. Xbox, screen time, money – override with `icons:` in YAML), and shows the current bank balance.
 - Only affordable rewards are shown (set `show_unaffordable: true` to also show the rest greyed out). When nothing is affordable it shows a "collect more points" hint listing each reward and its cost on its own line (turn it off with `show_hint: false` or the switch in the card editor).
