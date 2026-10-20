@@ -495,7 +495,12 @@ class KidChoresStatusCard extends HTMLElement {
         .bar { margin-top: 16px; }
         .bar .lbl { display: flex; justify-content: space-between; color: var(--secondary-text-color); font-size: .9em; margin-bottom: 6px; }
         .track { height: 14px; border-radius: 7px; background: var(--secondary-background-color, rgba(127,127,127,.2)); overflow: hidden; }
-        .bonus { margin-top: 8px; white-space: pre-line; font-size: .9em; color: var(--secondary-text-color); }
+        .bonus { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 8px 12px;
+          border-radius: 12px; background: color-mix(in srgb, var(--c) 14%, transparent);
+          border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); }
+        .bonus .star { font-size: 1.5em; line-height: 1; flex: none; }
+        .bonus .primary { font-size: .95em; }
+        .bonus .secondary { font-size: .8em; }
         .fill { height: 100%; border-radius: 7px; transition: width .4s; }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
         .tile, .wide { display: flex; align-items: center; gap: 12px; padding: 10px 12px;
@@ -526,7 +531,10 @@ class KidChoresStatusCard extends HTMLElement {
           <div class="track"><div class="fill" style="width:${pct}%;background:${barColor}"></div></div>
           ${
             S.bonus_week?.attributes.enabled
-              ? `<div class="bonus">${kcpEsc(kcpT(h, pct >= 100 ? "bonus_met" : "bonus_open", { n: n("bonus_week") }))}</div>`
+              ? (([head, note]) => `<div class="bonus" style="--c:${pct >= 100 ? "#30d158" : "#ffd60a"}">
+                  <span class="star">⭐</span>
+                  <div class="txt"><div class="primary">${kcpEsc(head.replace(/^⭐\s*/, ""))}</div><div class="secondary">${kcpEsc(note || "")}</div></div>
+                </div>`)(kcpT(h, pct >= 100 ? "bonus_met" : "bonus_open", { n: n("bonus_week") }).split("\n"))
               : ""
           }
         </div>
