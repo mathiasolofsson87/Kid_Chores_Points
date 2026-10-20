@@ -102,6 +102,7 @@ class ChoresOptionsFlow(OptionsFlow):
 
     def __init__(self) -> None:
         self._opts: dict[str, Any] = {}
+        self._editing: str = ""  # reward being edited
 
     def _load(self) -> dict[str, Any]:
         if not self._opts:
@@ -245,9 +246,12 @@ class ChoresOptionsFlow(OptionsFlow):
     # Generic "dictionary of name -> points" editors
     # ------------------------------------------------------------------
     def _menu(self, step_id: str, kind: str) -> ConfigFlowResult:
+        options = [f"{kind}_add"]
+        if self._load()[kind]:
+            options.append(f"{kind}_edit")
         return self.async_show_menu(
             step_id=step_id,
-            menu_options=[f"{kind}_add", f"{kind}_remove", "init"],
+            menu_options=[*options, f"{kind}_remove", "init"],
             description_placeholders={"items": self._describe(kind)},
         )
 
@@ -264,6 +268,19 @@ class ChoresOptionsFlow(OptionsFlow):
             for name, pts in items.items()
         )
 
+    def _name_selector(self, from_ms: bool) -> Any:
+        """Free text, or a Maintenance Supporter task picker for chores."""
+        if from_ms and (tasks := _ms_task_options(self.hass)):
+            # custom_value keeps free-text names working too
+            return SelectSelector(
+                SelectSelectorConfig(
+                    options=tasks,
+                    custom_value=True,
+                    mode=SelectSelectorMode.DROPDOWN,
+                )
+            )
+        return TextSelector()
+
     async def _add(
         self,
         kind: str,
@@ -271,9 +288,13 @@ class ChoresOptionsFlow(OptionsFlow):
         user_input: dict[str, Any] | None,
         from_ms: bool = False,
     ) -> ConfigFlowResult:
+        errors: dict[str, str] = {}
         if user_input is not None:
             name = user_input["name"].strip()
-            if name:
+            if name in self._load()[kind]:
+                # never overwrite silently: existing items are changed via Edit
+                errors["name"] = "name_exists"
+            elif name:
                 opts = self._load()
                 opts[kind][name] = int(user_input["points"])
                 if kind == CONF_REWARDS:
@@ -283,17 +304,9 @@ class ChoresOptionsFlow(OptionsFlow):
                     else:
                         opts[CONF_REWARD_PAYOUT].pop(name, None)
                 self._save()
-            return await getattr(self, f"async_step_{kind}")()
-        name_selector: Any = TextSelector()
-        if from_ms and (tasks := _ms_task_options(self.hass)):
-            # custom_value keeps free-text names working too
-            name_selector = SelectSelector(
-                SelectSelectorConfig(
-                    options=tasks,
-                    custom_value=True,
-                    mode=SelectSelectorMode.DROPDOWN,
-                )
-            )
+            if not errors:
+                return await getattr(self, f"async_step_{kind}")()
+        name_selector = self._name_selector(from_ms)
         schema: dict[Any, Any] = {
             vol.Required("name"): name_selector,
             vol.Required("points", default=1): _points(1000),
@@ -303,7 +316,79 @@ class ChoresOptionsFlow(OptionsFlow):
         return self.async_show_form(
             step_id=step_id,
             data_schema=vol.Schema(schema),
+            errors=errors,
             description_placeholders={"currency": self._load()[CONF_CURRENCY]},
+        )
+
+    async def _edit_pick(
+        self, kind: str, step_id: str, user_input: dict[str, Any] | None
+    ) -> ConfigFlowResult:
+        """Pick which item to edit."""
+        items = self._load()[kind]
+        if user_input is not None:
+            self._editing = user_input["name"]
+            return await getattr(self, f"async_step_{kind}_edit_item")()
+        if not items:
+            return await getattr(self, f"async_step_{kind}")()
+        return self.async_show_form(
+            step_id=step_id,
+            data_schema=vol.Schema(
+                {
+                    vol.Required("name"): SelectSelector(
+                        SelectSelectorConfig(
+                            options=list(items), mode=SelectSelectorMode.DROPDOWN
+                        )
+                    )
+                }
+            ),
+        )
+
+    async def _edit_item(
+        self,
+        kind: str,
+        step_id: str,
+        user_input: dict[str, Any] | None,
+        from_ms: bool = False,
+    ) -> ConfigFlowResult:
+        """Edit the picked item; the form starts with its current values."""
+        opts = self._load()
+        items, payouts = opts[kind], opts[CONF_REWARD_PAYOUT]
+        rewards = kind == CONF_REWARDS
+        old = self._editing
+        if old not in items:
+            return await getattr(self, f"async_step_{kind}")()
+        errors: dict[str, str] = {}
+        current = {"name": old, "points": items[old], "payout": payouts.get(old, 0)}
+        if user_input is not None:
+            current = {**current, **user_input}
+            new = str(user_input["name"]).strip() or old
+            if new != old and new in items:
+                errors["name"] = "name_exists"
+            else:
+                points = int(user_input["points"])
+                # rebuild so a renamed item keeps its place in the list
+                opts[kind] = {
+                    (new if k == old else k): (points if k == old else v)
+                    for k, v in items.items()
+                }
+                if rewards:
+                    payouts.pop(old, None)
+                    if payout := int(user_input.get("payout", 0)):
+                        payouts[new] = payout
+                self._editing = ""
+                self._save()
+                return await getattr(self, f"async_step_{kind}")()
+        schema: dict[Any, Any] = {
+            vol.Required("name", default=current["name"]): self._name_selector(from_ms),
+            vol.Required("points", default=current["points"]): _points(1000),
+        }
+        if rewards:
+            schema[vol.Optional("payout", default=current["payout"])] = _points(10000)
+        return self.async_show_form(
+            step_id=step_id,
+            data_schema=vol.Schema(schema),
+            errors=errors,
+            description_placeholders={"currency": opts[CONF_CURRENCY]},
         )
 
     async def _remove(
@@ -337,6 +422,12 @@ class ChoresOptionsFlow(OptionsFlow):
     async def async_step_mandatory_add(self, user_input=None) -> ConfigFlowResult:
         return await self._add(CONF_MANDATORY, "mandatory_add", user_input, True)
 
+    async def async_step_mandatory_edit(self, user_input=None) -> ConfigFlowResult:
+        return await self._edit_pick(CONF_MANDATORY, "mandatory_edit", user_input)
+
+    async def async_step_mandatory_edit_item(self, user_input=None) -> ConfigFlowResult:
+        return await self._edit_item(CONF_MANDATORY, "mandatory_edit_item", user_input, True)
+
     async def async_step_mandatory_remove(self, user_input=None) -> ConfigFlowResult:
         return await self._remove(CONF_MANDATORY, "mandatory_remove", user_input)
 
@@ -347,6 +438,12 @@ class ChoresOptionsFlow(OptionsFlow):
     async def async_step_bonus_add(self, user_input=None) -> ConfigFlowResult:
         return await self._add(CONF_BONUS, "bonus_add", user_input, True)
 
+    async def async_step_bonus_edit(self, user_input=None) -> ConfigFlowResult:
+        return await self._edit_pick(CONF_BONUS, "bonus_edit", user_input)
+
+    async def async_step_bonus_edit_item(self, user_input=None) -> ConfigFlowResult:
+        return await self._edit_item(CONF_BONUS, "bonus_edit_item", user_input, True)
+
     async def async_step_bonus_remove(self, user_input=None) -> ConfigFlowResult:
         return await self._remove(CONF_BONUS, "bonus_remove", user_input)
 
@@ -356,6 +453,12 @@ class ChoresOptionsFlow(OptionsFlow):
 
     async def async_step_rewards_add(self, user_input=None) -> ConfigFlowResult:
         return await self._add(CONF_REWARDS, "rewards_add", user_input)
+
+    async def async_step_rewards_edit(self, user_input=None) -> ConfigFlowResult:
+        return await self._edit_pick(CONF_REWARDS, "rewards_edit", user_input)
+
+    async def async_step_rewards_edit_item(self, user_input=None) -> ConfigFlowResult:
+        return await self._edit_item(CONF_REWARDS, "rewards_edit_item", user_input)
 
     async def async_step_rewards_remove(self, user_input=None) -> ConfigFlowResult:
         if user_input is not None:

@@ -59,18 +59,19 @@
         "title": "Mandatory chores",
         "description": "Pick from your Maintenance Supporter tasks. Each pays once per day, and bonus chores unlock when all are done.\n\n{items}\n\nTo show these chores in the dashboard's Maintenance Supporter list, give each task the label `mandatory` in Maintenance Supporter.",
         "menu_options": {
-          "mandatory_add": "Add or update a chore",
+          "mandatory_add": "Add a chore",
+          "mandatory_edit": "Edit a chore",
           "mandatory_remove": "Remove chores",
           "init": "Back"
         }
       },
       "mandatory_add": {
-        "title": "Add or update mandatory chore",
+        "title": "Add mandatory chore",
         "data": {
           "name": "Maintenance Supporter task",
           "points": "Points"
         },
-        "description": "Pick a task from Maintenance Supporter (or type a name). Picking an existing chore updates its points. Remember to give the task the label `mandatory` in Maintenance Supporter if you want it in the dashboard list."
+        "description": "Pick a task from Maintenance Supporter (or type a name). Remember to give the task the label `mandatory` in Maintenance Supporter if you want it in the dashboard list. To change an existing chore, use Edit a chore."
       },
       "mandatory_remove": {
         "title": "Remove mandatory chores",
@@ -82,18 +83,19 @@
         "title": "Bonus chores",
         "description": "Only paid out once all mandatory chores are done that day (held as pending until then).\n\n{items}\n\nTo show these chores in the dashboard's Maintenance Supporter list, give each task the label `bonus` in Maintenance Supporter.",
         "menu_options": {
-          "bonus_add": "Add or update a chore",
+          "bonus_add": "Add a chore",
+          "bonus_edit": "Edit a chore",
           "bonus_remove": "Remove chores",
           "init": "Back"
         }
       },
       "bonus_add": {
-        "title": "Add or update bonus chore",
+        "title": "Add bonus chore",
         "data": {
           "name": "Maintenance Supporter task",
           "points": "Points"
         },
-        "description": "Pick a task from Maintenance Supporter (or type a name). Picking an existing chore updates its points. Remember to give the task the label `bonus` in Maintenance Supporter if you want it in the dashboard list."
+        "description": "Pick a task from Maintenance Supporter (or type a name). Remember to give the task the label `bonus` in Maintenance Supporter if you want it in the dashboard list. To change an existing chore, use Edit a chore."
       },
       "bonus_remove": {
         "title": "Remove bonus chores",
@@ -105,13 +107,14 @@
         "title": "Rewards",
         "description": "Name the reward for ONE unit (e.g. `15 min Xbox`) and its cost in points. A reward can also pay money into the child's wallet instead of being handed out.\n\n{items}",
         "menu_options": {
-          "rewards_add": "Add or update a reward",
+          "rewards_add": "Add a reward",
+          "rewards_edit": "Edit a reward",
           "rewards_remove": "Remove rewards",
           "init": "Back"
         }
       },
       "rewards_add": {
-        "title": "Add or update reward",
+        "title": "Add reward",
         "data": {
           "name": "Reward (per unit)",
           "points": "Cost in points",
@@ -126,7 +129,56 @@
         "data": {
           "names": "Rewards to remove"
         }
+      },
+      "rewards_edit": {
+        "title": "Edit reward",
+        "data": {
+          "name": "Reward to edit"
+        }
+      },
+      "rewards_edit_item": {
+        "title": "Edit reward",
+        "data": {
+          "name": "Reward (per unit)",
+          "points": "Cost in points",
+          "payout": "Pays into the wallet (per unit)"
+        },
+        "data_description": {
+          "name": "Change the name to rename the reward.",
+          "payout": "0 = a normal reward that is handed out. Above 0 = a cash-out: each unit costs the points above and adds this much ({currency}) to the wallet."
+        }
+      },
+      "mandatory_edit": {
+        "title": "Edit mandatory chore",
+        "data": {
+          "name": "Chore to edit"
+        }
+      },
+      "mandatory_edit_item": {
+        "title": "Edit mandatory chore",
+        "data": {
+          "name": "Maintenance Supporter task",
+          "points": "Points"
+        },
+        "description": "Change the points, or pick another task / type another name to rename the chore. Matching is by task name, so re-pick the chore here if you rename the task in Maintenance Supporter."
+      },
+      "bonus_edit": {
+        "title": "Edit bonus chore",
+        "data": {
+          "name": "Chore to edit"
+        }
+      },
+      "bonus_edit_item": {
+        "title": "Edit bonus chore",
+        "data": {
+          "name": "Maintenance Supporter task",
+          "points": "Points"
+        },
+        "description": "Change the points, or pick another task / type another name to rename the chore. Matching is by task name, so re-pick the chore here if you rename the task in Maintenance Supporter."
       }
+    },
+    "error": {
+      "name_exists": "An item with this name already exists. Use Edit to change it."
     }
   },
   "selector": {

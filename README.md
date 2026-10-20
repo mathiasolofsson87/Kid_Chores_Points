@@ -8,11 +8,13 @@ A Home Assistant integration that turns chore completions into points, a weekly 
 2. Install **Kid Chores & Points**, restart Home Assistant.
 3. **Settings → Devices & services → Add integration → Kid Chores & Points**. Give it a name (one per child).
 4. Click **Configure** on the integration to set up everything in the UI:
-   - **Mandatory chores** – pick a task from the Maintenance Supporter list (free-text names also work) + points. Matching is by task name, so if you rename a task in Maintenance Supporter, re-pick it here. Counted once per day.
+   - **Mandatory chores** – pick a task from the Maintenance Supporter list (free-text names also work) + points. Matching is by task name, so if you rename a task in Maintenance Supporter, use **Edit a chore** and pick the new name. Counted once per day.
    - **Bonus chores** – pick a task + points. Only paid once all mandatory chores are done that day; earlier completions are held as *pending* and paid out when the last mandatory chore is done. Pending points are dropped at midnight. Unlike mandatory chores, a bonus chore pays every time it is completed.
    - **Rewards** – name per unit (e.g. `15 min Xbox`) + point cost. Optionally set **Pays into the wallet** to turn a reward into a cash-out (see [Wallet](#wallet)).
    - **Goal, policy & currency** – first day of the week, weekly goal, extra bank points when reached, what happens if the goal is missed (bank all / bank half / forfeit), and the wallet currency label (default `kr`).
    - **Notifications** – pick the child and parents as Home Assistant **persons**; their Companion-app phones are found automatically. Extra `notify` services (tablet, group) can be added too.
+
+In the chores and rewards lists, **Add**, **Edit** and **Remove** are separate menu entries. **Edit** opens a form with the current values (name, points and, for rewards, the payout); changing the name renames the item and keeps its place. Adding a name that already exists is refused – use Edit instead.
 
 Changes apply immediately (the integration reloads, balances are kept).
 
@@ -48,7 +50,7 @@ The bonus only shows up in the bank and in the *last week result* sensor, never 
 
 The wallet holds the child's real money, separate from points. Points go in, money comes out of a reward:
 
-1. **Configure → Rewards → Add or update a reward.** Set the point cost and **Pays into the wallet (per unit)**. For example `Cash out`, cost `10`, pays `5` means *10 points = 5 kr*. Add several cash-out rewards for different rates (e.g. `50 kr` costing `100` points and paying `50`).
+1. **Configure → Rewards → Add a reward** (or **Edit a reward** for an existing one). Set the point cost and **Pays into the wallet (per unit)**. For example `Cash out`, cost `10`, pays `5` means *10 points = 5 kr*. Add several cash-out rewards for different rates (e.g. `50 kr` costing `100` points and paying `50`).
 2. The child redeems it like any reward (Rewards card or the `redeem` service). The points leave the bank, the money is added to the wallet, and both the child and the parents get a notification with the new balance. Nothing is added to the *Redeemed rewards* list, since there is nothing to hand over.
 3. When the parent pays the money out, deduct it with the **Adjust points** card (choose *Wallet*, enter e.g. `-20`) or the `adjust_wallet` service. The same card or service can also add money (a gift, an allowance).
 
@@ -57,7 +59,7 @@ Good to know:
 - Amounts are whole numbers and the wallet never goes below 0.
 - The currency (default `kr`) is only a label; there is no conversion.
 - The Rewards card redeems one unit per tap, so make the unit a sensible amount. The `redeem` service accepts `units` for more.
-- Changing a reward's payout only affects future redemptions.
+- Changing a reward's payout only affects future redemptions. Setting the payout to 0 turns a cash-out back into a normal reward.
 - The child sees the balance on the **Wallet** card (and as a tile on the Status card once the wallet is in use). The History card shows cash-outs and adjustments, and the *Wallet* sensor can be used in automations.
 
 ## Language
@@ -129,7 +131,7 @@ The bonus counterpart of the *Chores to do* card. While today's mandatory chores
 
 ### Rewards card
 
-- Lists the rewards you configured, with the point cost and an icon (guessed from the name, e.g. Xbox, screen time, money – override with `icons:` in YAML), and shows the current bank balance. Cash-out rewards also show what they pay, e.g. `10 points → 5 kr`.
+- Lists the rewards you configured, with the point cost and an icon (cash-out rewards get a cash icon; others are guessed from the name, e.g. Xbox, screen time, money, falling back to a gift – override with `icons:` in YAML, keyed by the exact reward name), and shows the current bank balance. Cash-out rewards also show what they pay, e.g. `10 points → 5 kr`.
 - Only affordable rewards are shown (set `show_unaffordable: true` to also show the rest greyed out). When nothing is affordable it shows a "collect more points" hint listing each reward and its cost on its own line (turn it off with `show_hint: false` or the switch in the card editor).
 - Tapping a reward asks for confirmation inline, then redeems one unit.
 - `title:` and `color:` can be overridden.

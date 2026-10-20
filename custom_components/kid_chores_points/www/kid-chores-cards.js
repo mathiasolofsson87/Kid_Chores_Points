@@ -266,7 +266,7 @@ class KidChoresRewardsCard extends HTMLElement {
       const a = r.st.attributes;
       const affordable = r.st.state === "on";
       if (!affordable && !this._config.show_unaffordable) continue;
-      const icon = icons[a.reward] || kcpIcon(a.reward);
+      const icon = icons[a.reward] || (a.payout ? "mdi:cash" : kcpIcon(a.reward));
       const asking = this._confirm === r.id;
       body += `
         <div class="row ${affordable ? "" : "locked"}" data-id="${kcpEsc(r.id)}" style="--c:${affordable ? color : "var(--disabled-text-color, #9e9e9e)"}">
