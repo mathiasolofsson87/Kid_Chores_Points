@@ -101,6 +101,13 @@ SENSORS: tuple[ChoresSensorDescription, ...] = (
         value_fn=lambda m: sum(p["points"] for p in m.today["pending"]),
     ),
     ChoresSensorDescription(
+        key="points_history",
+        name="Points history",
+        icon="mdi:timeline-clock",
+        value_fn=lambda m: len(m.history),
+        attrs_fn=lambda m: {"history": list(reversed(m.history))},
+    ),
+    ChoresSensorDescription(
         key="last_week_result",
         name="Last week result",
         icon="mdi:history",
@@ -118,6 +125,7 @@ async def async_setup_entry(
 
 class ChoresSensor(ChoresEntity, SensorEntity):
     entity_description: ChoresSensorDescription
+    _unrecorded_attributes = frozenset({"history"})
 
     def __init__(self, manager: ChoresManager, description: ChoresSensorDescription):
         super().__init__(manager, description.key)

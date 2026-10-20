@@ -141,6 +141,8 @@ views:
           - type: custom:kid-chores-status-card
           # Add or deduct points in the bank or this week (use -5 to deduct)
           - type: custom:kid-chores-adjust-card
+          # Timeline of every points change and why
+          - type: custom:kid-chores-history-card
       - type: grid
         cards:
           - type: heading

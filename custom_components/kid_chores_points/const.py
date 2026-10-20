@@ -42,6 +42,8 @@ DEFAULT_OPTIONS = {
     CONF_NOTIFY_PARENTS: [],
 }
 
+HISTORY_LIMIT = 300  # entries kept in the points history
+
 SIGNAL_UPDATE = f"{DOMAIN}_update_{{}}"
 
 # Service names / fields

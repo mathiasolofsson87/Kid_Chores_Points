@@ -32,6 +32,7 @@ from .const import (
     DEFAULT_OPTIONS,
     DOMAIN,
     EVENT_TASK_COMPLETED,
+    HISTORY_LIMIT,
     POLICY_FORFEIT,
     POLICY_HALF,
     SIGNAL_UPDATE,
@@ -95,6 +96,7 @@ class ChoresManager:
             "last_week": "",
             "today": _empty_today(),
             "reward_log": [],
+            "history": [],
             **stored,
         }
 
@@ -113,6 +115,33 @@ class ChoresManager:
     @property
     def reward_log(self) -> list[dict[str, Any]]:
         return self.data["reward_log"]
+
+    @property
+    def history(self) -> list[dict[str, Any]]:
+        return self.data["history"]
+
+    def _record(
+        self,
+        kind: str,
+        label: str,
+        points: int,
+        target: str = "week",
+        pending: int = 0,
+    ) -> None:
+        """Append a points change to the history (call after updating totals)."""
+        self.history.append(
+            {
+                "t": dt_util.now().isoformat(timespec="seconds"),
+                "type": kind,
+                "label": label,
+                "points": points,
+                "target": target,
+                "pending": pending,
+                "week": self.week,
+                "bank": self.bank,
+            }
+        )
+        del self.history[:-HISTORY_LIMIT]
 
     @property
     def today(self) -> dict[str, Any]:
@@ -255,9 +284,15 @@ class ChoresManager:
                     return  # counted once per day
                 today["mandatory_done"].append(task)
                 award = int(mandatory[task])
+                released = list(today["pending"])
+                self.data["week"] = self.week + award
+                self._record("chore", task, award)
                 if not self.mandatory_remaining():
-                    pending_sum = sum(p["points"] for p in today["pending"])
-                    award += pending_sum
+                    pending_sum = sum(p["points"] for p in released)
+                    award = pending_sum
+                    for p in released:
+                        self.data["week"] = self.week + int(p["points"])
+                        self._record("bonus_released", p["name"], int(p["points"]))
                     today["bonus_done"].extend(p["name"] for p in today["pending"])
                     today["pending"] = []
                     msg = self.tr("mandatory_done")
@@ -266,8 +301,9 @@ class ChoresManager:
                     notices.append(
                         (CONF_NOTIFY_KID, self.tr("mandatory_done_title"), msg)
                     )
-                self.data["week"] = self.week + award
-                today["points"] += award
+                else:
+                    award = 0
+                today["points"] += int(mandatory[task]) + award
             else:
                 pts = int(bonus[task])
                 remaining = self.mandatory_remaining()
@@ -275,8 +311,10 @@ class ChoresManager:
                     self.data["week"] = self.week + pts
                     today["bonus_done"].append(task)
                     today["points"] += pts
+                    self._record("bonus", task, pts)
                 else:
                     today["pending"].append({"name": task, "points": pts})
+                    self._record("pending", task, 0, pending=pts)
                     notices.append(
                         (
                             CONF_NOTIFY_KID,
@@ -307,6 +345,7 @@ class ChoresManager:
             else:
                 short = False
                 self.data["bank"] = bank - cost
+                self._record("redeem", label, -cost, "bank")
                 self.reward_log.append(
                     {
                         "uid": uuid.uuid4().hex,
@@ -343,7 +382,9 @@ class ChoresManager:
     async def async_adjust(self, target: str, points: int, reason: str | None) -> None:
         async with self._lock:
             key = "week" if target == "week" else "bank"
-            self.data[key] = max(int(self.data[key]) + points, 0)
+            before = int(self.data[key])
+            self.data[key] = max(before + points, 0)
+            self._record("adjust", reason or "", self.data[key] - before, key)
             self._changed()
         await self._log(
             self.tr(
@@ -370,6 +411,12 @@ class ChoresManager:
             self.data["bank"] = self.bank + to_bank
             bank = self.bank
             self.data["week"] = 0
+            self._record(
+                "week_close",
+                f"{week}/{goal} {'✓' if met else '✗'}",
+                to_bank,
+                "bank",
+            )
             self.data["last_week"] = self.tr(
                 "last_week",
                 week=week,
