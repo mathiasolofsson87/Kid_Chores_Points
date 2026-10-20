@@ -23,10 +23,12 @@ from .const import (
     CONF_GOAL_BONUS,
     CONF_KID_PERSONS,
     CONF_MANDATORY,
+    CONF_CURRENCY,
     CONF_NOTIFY_KID,
     CONF_NOTIFY_PARENTS,
     CONF_PARENT_PERSONS,
     CONF_POLICY,
+    CONF_REWARD_PAYOUT,
     CONF_REWARDS,
     CONF_WEEK_START,
     DEFAULT_OPTIONS,
@@ -82,6 +84,15 @@ class ChoresManager:
         return self.opt(CONF_REWARDS)
 
     @property
+    def payouts(self) -> dict[str, int]:
+        """Rewards that pay money into the wallet: {reward: money per unit}."""
+        return self.opt(CONF_REWARD_PAYOUT)
+
+    @property
+    def currency(self) -> str:
+        return self.opt(CONF_CURRENCY)
+
+    @property
     def goal(self) -> int:
         return int(self.opt(CONF_GOAL))
 
@@ -93,6 +104,7 @@ class ChoresManager:
         self.data = {
             "week": 0,
             "bank": 0,
+            "wallet": 0,
             "last_week": "",
             "today": _empty_today(),
             "reward_log": [],
@@ -107,6 +119,10 @@ class ChoresManager:
     @property
     def bank(self) -> int:
         return int(self.data["bank"])
+
+    @property
+    def wallet(self) -> int:
+        return int(self.data["wallet"])
 
     @property
     def last_week(self) -> str:
@@ -127,8 +143,12 @@ class ChoresManager:
         points: int,
         target: str = "week",
         pending: int = 0,
+        amount: int = 0,
     ) -> None:
-        """Append a points change to the history (call after updating totals)."""
+        """Append a points/wallet change to the history (call after updating totals).
+
+        `amount` is the change in wallet money (not points).
+        """
         self.history.append(
             {
                 "t": dt_util.now().isoformat(timespec="seconds"),
@@ -139,6 +159,8 @@ class ChoresManager:
                 "pending": pending,
                 "week": self.week,
                 "bank": self.bank,
+                "amount": amount,
+                "wallet": self.wallet,
             }
         )
         del self.history[:-HISTORY_LIMIT]
@@ -337,6 +359,7 @@ class ChoresManager:
         if rate <= 0:
             raise ServiceValidationError(f"Reward not configured: {reward}")
         cost = rate * units
+        payout = int(self.payouts.get(reward, 0)) * units
         label = reward if units == 1 else f"{units} × {reward}"
         async with self._lock:
             bank = self.bank
@@ -345,19 +368,23 @@ class ChoresManager:
             else:
                 short = False
                 self.data["bank"] = bank - cost
-                self._record("redeem", label, -cost, "bank")
-                self.reward_log.append(
-                    {
-                        "uid": uuid.uuid4().hex,
-                        "summary": label,
-                        "description": self.tr(
-                            "redeemed_note",
-                            when=f"{dt_util.now():%Y-%m-%d %H:%M}",
-                            cost=cost,
-                        ),
-                        "done": False,
-                    }
-                )
+                if payout:
+                    # money reward: nothing to hand out, it goes to the wallet
+                    self.data["wallet"] = self.wallet + payout
+                else:
+                    self.reward_log.append(
+                        {
+                            "uid": uuid.uuid4().hex,
+                            "summary": label,
+                            "description": self.tr(
+                                "redeemed_note",
+                                when=f"{dt_util.now():%Y-%m-%d %H:%M}",
+                                cost=cost,
+                            ),
+                            "done": False,
+                        }
+                    )
+                self._record("redeem", label, -cost, "bank", amount=payout)
                 self._changed()
         if short:
             await self._notify(
@@ -367,6 +394,22 @@ class ChoresManager:
             )
             raise ServiceValidationError("Not enough points in the bank")
         left = bank - cost
+        if payout:
+            money = {"amount": payout, "cur": self.currency, "wallet": self.wallet}
+            await self._log(
+                self.tr("cashout_log", label=label, cost=cost, left=left, **money)
+            )
+            await self._notify(
+                CONF_NOTIFY_PARENTS,
+                self.tr("cashout_parents_title"),
+                self.tr("cashout_parents", label=label, cost=cost, left=left, **money),
+            )
+            await self._notify(
+                CONF_NOTIFY_KID,
+                self.tr("cashout_kid_title"),
+                self.tr("cashout_kid", **money),
+            )
+            return
         await self._log(self.tr("redeemed_log", label=label, cost=cost, left=left))
         await self._notify(
             CONF_NOTIFY_PARENTS,
@@ -391,6 +434,24 @@ class ChoresManager:
                 "adjust_log",
                 target=self.tr("week" if target == "week" else "bank"),
                 points=points,
+                reason=reason or self.tr("no_reason"),
+            )
+        )
+
+    async def async_adjust_wallet(self, amount: int, reason: str | None) -> None:
+        """Parent adds money to / deducts money from the wallet (never below 0)."""
+        async with self._lock:
+            before = self.wallet
+            self.data["wallet"] = max(before + amount, 0)
+            self._record(
+                "adjust", reason or "", 0, "wallet", amount=self.wallet - before
+            )
+            self._changed()
+        await self._log(
+            self.tr(
+                "wallet_adjust_log",
+                amount=amount,
+                cur=self.currency,
                 reason=reason or self.tr("no_reason"),
             )
         )

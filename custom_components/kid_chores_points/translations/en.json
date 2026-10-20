@@ -22,25 +22,27 @@
           "mandatory": "Mandatory chores",
           "bonus": "Bonus chores",
           "rewards": "Rewards",
-          "settings": "Weekly goal & policy",
+          "settings": "Goal, policy & currency",
           "notifications": "Notifications",
           "finish": "Finish"
         }
       },
       "settings": {
-        "title": "Weekly goal & policy",
+        "title": "Goal, policy & currency",
         "data": {
           "weekly_goal": "Weekly goal (points)",
           "goal_bonus": "Bonus points when the goal is reached",
           "missed_goal_policy": "If the weekly goal is missed",
-          "week_start": "First day of the week"
+          "week_start": "First day of the week",
+          "currency": "Wallet currency"
         },
         "description": "The week closes at 23:59 on the day before the first day of the week. Then the week's points move to the bank, depending on whether the goal was reached.",
         "data_description": {
           "week_start": "The week closes at 23:59 on the day before this day (Monday = closes Sunday night).",
           "weekly_goal": "Points needed in one week to reach the goal. Reaching it means points this week ≥ the goal.",
           "goal_bonus": "A flat extra amount added to the bank when the week closes with the goal reached, on top of the points earned. Example: goal 50, bonus 10, earned 55 → 65 go to the bank. Set 0 for no bonus. Never paid when the goal is missed.",
-          "missed_goal_policy": "What gets banked if the goal is NOT reached: all of the week's points, half of them (rounded down), or none. No bonus is paid either way."
+          "missed_goal_policy": "What gets banked if the goal is NOT reached: all of the week's points, half of them (rounded down), or none. No bonus is paid either way.",
+          "currency": "Shown after wallet amounts, e.g. kr. Only a label – no conversion."
         }
       },
       "notifications": {
@@ -101,7 +103,7 @@
       },
       "rewards": {
         "title": "Rewards",
-        "description": "Name the reward for ONE unit (e.g. `15 min Xbox`) and its cost in points.\n\n{items}",
+        "description": "Name the reward for ONE unit (e.g. `15 min Xbox`) and its cost in points. A reward can also pay money into the child's wallet instead of being handed out.\n\n{items}",
         "menu_options": {
           "rewards_add": "Add or update a reward",
           "rewards_remove": "Remove rewards",
@@ -112,7 +114,11 @@
         "title": "Add or update reward",
         "data": {
           "name": "Reward (per unit)",
-          "points": "Cost in points"
+          "points": "Cost in points",
+          "payout": "Pays into the wallet (per unit)"
+        },
+        "data_description": {
+          "payout": "Leave at 0 for a normal reward. Set e.g. 5 to turn it into a cash-out: each unit costs the points above and adds this much ({currency}) to the wallet. Example: 10 points → 5 {currency}."
         }
       },
       "rewards_remove": {
@@ -202,6 +208,24 @@
       "name": "Close week",
       "description": "Close the week now (normally runs at 23:59 on the last day of the week).",
       "fields": {
+        "config_entry": {
+          "name": "Tracker",
+          "description": "Config entry ID (only needed with several trackers)."
+        }
+      }
+    },
+    "adjust_wallet": {
+      "name": "Adjust wallet",
+      "description": "Add money to or deduct money from the wallet.",
+      "fields": {
+        "amount": {
+          "name": "Amount",
+          "description": "Positive to add, negative to deduct (whole numbers)."
+        },
+        "reason": {
+          "name": "Reason",
+          "description": "Shown in the logbook and history."
+        },
         "config_entry": {
           "name": "Tracker",
           "description": "Config entry ID (only needed with several trackers)."

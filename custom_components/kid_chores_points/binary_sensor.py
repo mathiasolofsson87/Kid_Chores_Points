@@ -54,5 +54,7 @@ class CanAfford(ChoresEntity, BinarySensorEntity):
             "reward": self._reward,
             "cost": int(self.manager.rewards.get(self._reward, 0)),
             "bank": self.manager.bank,
+            "payout": int(self.manager.payouts.get(self._reward, 0)),
+            "currency": self.manager.currency,
             "entry_id": self.manager.entry.entry_id,
         }

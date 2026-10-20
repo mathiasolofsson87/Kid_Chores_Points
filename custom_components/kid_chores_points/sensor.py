@@ -48,6 +48,18 @@ SENSORS: tuple[ChoresSensorDescription, ...] = (
         value_fn=lambda m: m.bank,
     ),
     ChoresSensorDescription(
+        key="wallet",
+        name="Wallet",
+        icon="mdi:wallet",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda m: m.wallet,
+        attrs_fn=lambda m: {
+            "currency": m.currency,
+            # cards show the wallet once it is in use
+            "enabled": bool(m.payouts) or m.wallet > 0,
+        },
+    ),
+    ChoresSensorDescription(
         key="weekly_goal",
         name="Weekly goal",
         icon="mdi:flag-checkered",
@@ -130,6 +142,12 @@ class ChoresSensor(ChoresEntity, SensorEntity):
     def __init__(self, manager: ChoresManager, description: ChoresSensorDescription):
         super().__init__(manager, description.key)
         self.entity_description = description
+
+    @property
+    def native_unit_of_measurement(self) -> str | None:
+        if self.entity_description.key == "wallet":
+            return self.manager.currency
+        return super().native_unit_of_measurement
 
     @property
     def native_value(self) -> Any:

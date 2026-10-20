@@ -21,6 +21,7 @@ from .const import (
     DOMAIN,
     PLATFORMS,
     SERVICE_ADJUST,
+    SERVICE_ADJUST_WALLET,
     SERVICE_CLOSE_WEEK,
     SERVICE_COMPLETE,
     SERVICE_REDEEM,
@@ -70,6 +71,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             call.data["target"], call.data["points"], call.data.get("reason")
         )
 
+    async def adjust_wallet(call: ServiceCall) -> None:
+        await _manager(hass, call).async_adjust_wallet(
+            call.data["amount"], call.data.get("reason")
+        )
+
     async def close_week(call: ServiceCall) -> None:
         await _manager(hass, call).async_close_week()
 
@@ -96,12 +102,25 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     hass.services.async_register(
         DOMAIN,
         SERVICE_ADJUST,
+    SERVICE_ADJUST_WALLET,
         adjust,
         vol.Schema(
             {
                 **_BASE,
                 vol.Required("target"): vol.In(["week", "bank"]),
                 vol.Required("points"): vol.Coerce(int),
+                vol.Optional("reason"): cv.string,
+            }
+        ),
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_ADJUST_WALLET,
+        adjust_wallet,
+        vol.Schema(
+            {
+                **_BASE,
+                vol.Required("amount"): vol.Coerce(int),
                 vol.Optional("reason"): cv.string,
             }
         ),

@@ -58,6 +58,13 @@ const KCP_TEXT = {
     bonus_locked: "🔒 Bonus chores unlock when today's chores are done.",
     bonus_pending: "⏳ {n} bonus points are waiting to be added!",
     bonus_none: "No bonus chores configured yet.",
+    wallet_title: "Wallet",
+    wallet_sub: "Money you have saved",
+    t_wallet: "Wallet",
+    adjust_amount: "Amount (use - to deduct)",
+    w_recent: "Recent activity",
+    w_empty: "No money yet. Cash out points to fill your wallet!",
+    h_cashout: "Cashed out",
   },
   sv: {
     title: "Lös in poäng",
@@ -114,6 +121,13 @@ const KCP_TEXT = {
     bonus_locked: "🔒 Bonusuppgifter låses upp när dagens uppgifter är klara.",
     bonus_pending: "⏳ {n} bonuspoäng väntar på att läggas till!",
     bonus_none: "Inga bonusuppgifter inställda än.",
+    wallet_title: "Plånbok",
+    wallet_sub: "Pengar du har sparat",
+    t_wallet: "Plånboken",
+    adjust_amount: "Belopp (använd - för avdrag)",
+    w_recent: "Senaste händelser",
+    w_empty: "Inga pengar än. Växla poäng för att fylla plånboken!",
+    h_cashout: "Utväxlat",
   },
 };
 
@@ -226,7 +240,7 @@ class KidChoresRewardsCard extends HTMLElement {
     const rewards = this._findRewards();
     this._rewards = rewards;
     const sig = JSON.stringify([
-      rewards.map((r) => [r.id, r.st.state, r.st.attributes.cost, r.st.attributes.bank, r.st.attributes.reward]),
+      rewards.map((r) => [r.id, r.st.state, r.st.attributes.cost, r.st.attributes.bank, r.st.attributes.reward, r.st.attributes.payout, r.st.attributes.currency]),
       this._confirm,
       this._hass.language,
       this._config,
@@ -263,8 +277,8 @@ class KidChoresRewardsCard extends HTMLElement {
               asking
                 ? kcpEsc(this._t("confirm", { r: a.reward }))
                 : affordable
-                ? `${a.cost} ${this._t("points")}`
-                : `${a.cost} ${this._t("points")} · ${this._t("short", { n: a.cost - a.bank })}`
+                ? `${a.cost} ${this._t("points")}${a.payout ? ` → ${a.payout} ${a.currency}` : ""}`
+                : `${a.cost} ${this._t("points")}${a.payout ? ` → ${a.payout} ${a.currency}` : ""} · ${this._t("short", { n: a.cost - a.bank })}`
             }</div>
           </div>
           ${
@@ -276,7 +290,7 @@ class KidChoresRewardsCard extends HTMLElement {
     }
 
     if (rewards.length && !anyAffordable && this._config.show_hint !== false) {
-      const costs = rewards.map((r) => kcpEsc(`${r.st.attributes.reward} = ${r.st.attributes.cost} p`)).join("<br>");
+      const costs = rewards.map((r) => kcpEsc(`${r.st.attributes.reward} = ${r.st.attributes.cost} p${r.st.attributes.payout ? ` → ${r.st.attributes.payout} ${r.st.attributes.currency}` : ""}`)).join("<br>");
       body += `
         <div class="row hint" style="--c:var(--disabled-text-color, #9e9e9e)">
           <div class="ico"><ha-icon icon="mdi:arm-flex"></ha-icon></div>
@@ -456,8 +470,8 @@ class KidChoresStatusCard extends HTMLElement {
     const last = val("last_week_result");
     const showLast = last && !["unknown", "unavailable", ""].includes(last);
     const title = this._config.title ?? kcpT(h, "chores");
-    const tile = (icon, color, primary, secondary) => `
-      <div class="tile" style="--c:${color}">
+    const tile = (icon, color, primary, secondary, cls = "tile") => `
+      <div class="${cls}" style="--c:${color}">
         <div class="ico"><ha-icon icon="${icon}"></ha-icon></div>
         <div class="txt"><div class="primary">${kcpEsc(primary)}</div><div class="secondary">${kcpEsc(secondary)}</div></div>
       </div>`;
@@ -508,6 +522,11 @@ class KidChoresStatusCard extends HTMLElement {
           ${tile("mdi:flag-variant", "#0a84ff", `${n("points_to_goal")} p`, kcpT(h, "to_goal"))}
           ${tile("mdi:calendar-check", "#30d158", `${n("points_today")} p`, kcpT(h, "today"))}
           ${tile("mdi:piggy-bank", "#ff9f0a", `${n("points_bank")} p`, kcpT(h, "bank"))}
+          ${
+            S.wallet?.attributes.enabled
+              ? tile("mdi:wallet", "#64d2ff", `${n("wallet")} ${S.wallet.attributes.currency}`, kcpT(h, "wallet_title"), "wide")
+              : ""
+          }
           ${
             showLast
               ? `<div class="wide" style="--c:var(--disabled-text-color,#9e9e9e)">
@@ -618,7 +637,7 @@ class KidChoresAdjustCard extends HTMLElement {
       <style>
         ha-card { padding: 16px; }
         .t { font-size: 1.4em; font-weight: 600; color: var(--primary-text-color); }
-        .stats { display: flex; gap: 16px; margin-top: 4px; color: var(--secondary-text-color); }
+        .stats { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 4px; color: var(--secondary-text-color); }
         .stats b { color: var(--primary-text-color); }
         label { display: block; margin: 14px 0 6px; font-size: .9em; color: var(--secondary-text-color); }
         .seg { display: flex; border-radius: 10px; overflow: hidden; border: 1px solid var(--divider-color, #888); }
@@ -637,9 +656,9 @@ class KidChoresAdjustCard extends HTMLElement {
       </style>
       <ha-card>
         <div class="t"></div>
-        <div class="stats"><span class="sw"></span><span class="sb"></span></div>
+        <div class="stats"><span class="sw"></span><span class="sb"></span><span class="sm"></span></div>
         <label class="l-target"></label>
-        <div class="seg"><button data-t="bank"></button><button data-t="week"></button></div>
+        <div class="seg"><button data-t="bank"></button><button data-t="week"></button><button data-t="wallet"></button></div>
         <label class="l-points"></label>
         <input class="num" type="text" inputmode="text" autocomplete="off" placeholder="5 / -5" />
         <label class="l-reason"></label>
@@ -649,12 +668,12 @@ class KidChoresAdjustCard extends HTMLElement {
       </ha-card>`;
     const $ = (q) => this.shadowRoot.querySelector(q);
     this._el = {
-      title: $(".t"), sw: $(".sw"), sb: $(".sb"),
+      title: $(".t"), sw: $(".sw"), sb: $(".sb"), sm: $(".sm"),
       lTarget: $(".l-target"), lPoints: $(".l-points"), lReason: $(".l-reason"),
       num: $(".num"), reason: $(".reason"), apply: $(".apply"), msg: $(".msg"),
-      bankBtn: $('[data-t="bank"]'), weekBtn: $('[data-t="week"]'),
+      bankBtn: $('[data-t="bank"]'), weekBtn: $('[data-t="week"]'), walletBtn: $('[data-t="wallet"]'),
     };
-    for (const b of [this._el.bankBtn, this._el.weekBtn]) {
+    for (const b of [this._el.bankBtn, this._el.weekBtn, this._el.walletBtn]) {
       b.addEventListener("click", () => {
         this._target = b.dataset.t;
         this._update();
@@ -672,22 +691,27 @@ class KidChoresAdjustCard extends HTMLElement {
     const S = kcpSensors(h, this._config.device);
     e.title.textContent = this._config.title ?? kcpT(h, "adjust_title");
     e.lTarget.textContent = kcpT(h, "adjust_target");
-    e.lPoints.textContent = kcpT(h, "adjust_points");
+    e.lPoints.textContent = kcpT(h, this._target === "wallet" ? "adjust_amount" : "adjust_points");
     e.lReason.textContent = kcpT(h, "adjust_reason");
     e.apply.textContent = kcpT(h, "apply");
     e.bankBtn.textContent = kcpT(h, "t_bank");
     e.weekBtn.textContent = kcpT(h, "t_week");
+    e.walletBtn.textContent = kcpT(h, "t_wallet");
+    e.walletBtn.classList.toggle("on", this._target === "wallet");
     e.bankBtn.classList.toggle("on", this._target === "bank");
     e.weekBtn.classList.toggle("on", this._target === "week");
     e.apply.disabled = !S;
     if (!S) {
       e.msg.textContent = kcpT(h, "no_tracker");
       e.msg.classList.add("err");
-      e.sw.textContent = e.sb.textContent = "";
+      e.sw.textContent = e.sb.textContent = e.sm.textContent = "";
       return;
     }
     e.sw.innerHTML = `${kcpEsc(kcpT(h, "this_week"))}: <b>${parseInt(S.points_week?.state, 10) || 0} p</b>`;
     e.sb.innerHTML = `${kcpEsc(kcpT(h, "bank"))}: <b>${parseInt(S.points_bank?.state, 10) || 0} p</b>`;
+    e.sm.innerHTML = S.wallet
+      ? `${kcpEsc(kcpT(h, "wallet_title"))}: <b>${parseInt(S.wallet.state, 10) || 0} ${kcpEsc(S.wallet.attributes.currency)}</b>`
+      : "";
   }
 
   _say(text, err = false) {
@@ -705,18 +729,20 @@ class KidChoresAdjustCard extends HTMLElement {
       return;
     }
     const points = parseInt(raw, 10);
+    const wallet = this._target === "wallet";
     const data = {
-      target: this._target,
-      points,
+      [wallet ? "amount" : "points"]: points,
       config_entry: (S.points_bank || S.points_week).attributes.entry_id,
     };
+    if (!wallet) data.target = this._target;
     const reason = e.reason.value.trim();
     if (reason) data.reason = reason;
     e.apply.disabled = true;
     try {
-      await h.callService("kid_chores_points", "adjust_points", data);
-      const t = kcpT(h, this._target === "bank" ? "t_bank" : "t_week");
-      this._say(kcpT(h, points > 0 ? "added" : "deducted", { n: Math.abs(points), t }));
+      await h.callService("kid_chores_points", wallet ? "adjust_wallet" : "adjust_points", data);
+      const t = kcpT(h, { bank: "t_bank", week: "t_week", wallet: "t_wallet" }[this._target]);
+      const n = wallet ? `${Math.abs(points)} ${S.wallet?.attributes.currency || ""}`.trim() : Math.abs(points);
+      this._say(kcpT(h, points > 0 ? "added" : "deducted", { n, t }));
       e.num.value = "";
       e.reason.value = "";
     } catch (err) {
@@ -733,7 +759,7 @@ customElements.define("kid-chores-adjust-card-editor", KidChoresAdjustCardEditor
 window.customCards.push({
   type: "kid-chores-adjust-card",
   name: "Kid Chores & Points – Adjust points",
-  description: "Parent tool: add or deduct points in the bank or this week.",
+  description: "Parent tool: add or deduct points in the bank or this week, or money in the wallet.",
   preview: true,
 });
 
@@ -748,6 +774,7 @@ const KCP_HISTORY = {
   pending: ["mdi:timer-sand", "#8e8e93"],
   redeem: ["mdi:gift", "#ff453a"],
   adjust: ["mdi:tune-vertical", "#0a84ff"],
+  wallet: ["mdi:wallet", "#64d2ff"],
   week_close: ["mdi:flag-checkered", "#bf5af2"],
 };
 
@@ -822,15 +849,22 @@ class KidChoresHistoryCard extends HTMLElement {
         day = dl;
         body += `<div class="day">${kcpEsc(dl)}</div>`;
       }
-      const [icon, color] = KCP_HISTORY[r.type] || KCP_HISTORY.adjust;
-      const pts = r.type === "pending" ? r.pending : r.points;
+      const [icon, color] =
+        r.type === "adjust" && r.target === "wallet" ? KCP_HISTORY.wallet : KCP_HISTORY[r.type] || KCP_HISTORY.adjust;
+      const isWallet = r.target === "wallet";
+      const cur = S?.wallet?.attributes.currency || "";
+      const pts = r.type === "pending" ? r.pending : isWallet ? r.amount : r.points;
+      const unit = isWallet ? cur : "p";
       const sign = pts > 0 ? "+" : "";
       const cls = r.type === "pending" ? "pend" : pts < 0 ? "neg" : pts > 0 ? "pos" : "";
       const where = r.target === "bank" && r.type !== "redeem" ? ` ${kcpT(h, "h_to_bank")}` : "";
+      // cashing out points also adds money to the wallet
+      const gain = r.type === "redeem" && r.amount ? `+${r.amount} ${cur}` : "";
       const label = r.label || (r.type === "adjust" ? kcpT(h, "h_no_reason") : "");
       const time = d.toLocaleTimeString(h.language, { hour: "2-digit", minute: "2-digit" });
       const sub = [
-        kcpT(h, `h_${r.type}`) + (r.type === "adjust" ? ` (${kcpT(h, r.target === "bank" ? "t_bank" : "t_week")})` : ""),
+        kcpT(h, r.type === "redeem" && r.amount ? "h_cashout" : `h_${r.type}`) +
+          (r.type === "adjust" ? ` (${kcpT(h, { bank: "t_bank", week: "t_week", wallet: "t_wallet" }[r.target] || "t_week")})` : ""),
         time,
       ].join(" · ");
       body += `
@@ -839,9 +873,9 @@ class KidChoresHistoryCard extends HTMLElement {
           <div class="main">
             <div class="lbl">${kcpEsc(label)}</div>
             <div class="sub">${kcpEsc(sub)}</div>
-            ${balances ? `<div class="sub">${kcpEsc(kcpT(h, "h_balances", { w: r.week, b: r.bank }))}</div>` : ""}
+            ${balances ? `<div class="sub">${kcpEsc(kcpT(h, "h_balances", { w: r.week, b: r.bank }) + (r.wallet !== undefined && S?.wallet?.attributes.enabled ? ` · ${kcpT(h, "wallet_title")} ${r.wallet} ${cur}` : ""))}</div>` : ""}
           </div>
-          <div class="pts ${cls}">${sign}${pts} p${kcpEsc(where)}</div>
+          <div class="pts ${cls}">${sign}${pts} ${kcpEsc(unit)}${kcpEsc(where)}${gain ? `<div class="gain">${kcpEsc(gain)}</div>` : ""}</div>
         </div>`;
     }
     const more = all.length > rows.length
@@ -866,6 +900,7 @@ class KidChoresHistoryCard extends HTMLElement {
         .pts.pos { color: var(--success-color, #30d158); }
         .pts.neg { color: var(--error-color, #ff453a); }
         .pts.pend { color: var(--secondary-text-color); }
+        .pts .gain { color: var(--success-color, #30d158); }
         .empty { padding: 16px 0; color: var(--secondary-text-color); }
         .more { width: 100%; margin-top: 12px; padding: 10px; border: 1px solid var(--divider-color, #888);
           border-radius: 10px; background: transparent; font: inherit; cursor: pointer;
@@ -1280,5 +1315,130 @@ window.customCards.push({
   type: "kid-chores-bonus-card",
   name: "Kid Chores & Points – Bonus chores",
   description: "Bonus chores with Done buttons for Maintenance Supporter tasks; locked until today's mandatory chores are done.",
+  preview: true,
+});
+
+
+/* ------------------------------------------------------------------ */
+/*  Wallet card (child)                                                */
+/* ------------------------------------------------------------------ */
+class KidChoresWalletCard extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: "open" });
+    this._sig = "";
+  }
+
+  static getConfigElement() {
+    return document.createElement("kid-chores-wallet-card-editor");
+  }
+
+  static getStubConfig() {
+    return {};
+  }
+
+  setConfig(config) {
+    this._config = config;
+    this._sig = "";
+    if (this._hass) this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    this._render();
+  }
+
+  getCardSize() {
+    return 4;
+  }
+
+  getGridOptions() {
+    return { columns: 12, min_columns: 6 };
+  }
+
+  _render() {
+    const h = this._hass, cfg = this._config;
+    if (!h || !cfg) return;
+    const S = kcpSensors(h, cfg.device);
+    const w = S?.wallet;
+    const hist = S?.points_history;
+    const sig = [h.language, w?.state, w?.attributes.currency, hist?.last_updated, hist?.state, JSON.stringify(cfg)].join("|");
+    if (sig === this._sig) return;
+    this._sig = sig;
+
+    const cur = w?.attributes.currency || "";
+    const limit = Math.max(parseInt(cfg.limit, 10) || 5, 1);
+    // wallet movements: manual adjustments and point cash-outs
+    const rows = (hist?.attributes.history || [])
+      .filter((r) => r.target === "wallet" || (r.type === "redeem" && r.amount))
+      .slice(0, limit);
+
+    let body = "";
+    if (!S) body = `<div class="empty">${kcpEsc(kcpT(h, "no_tracker"))}</div>`;
+    else if (!rows.length) body = `<div class="empty">${kcpEsc(kcpT(h, "w_empty"))}</div>`;
+    else {
+      body = `<div class="sec">${kcpEsc(kcpT(h, "w_recent"))}</div>`;
+      for (const r of rows) {
+        const d = new Date(r.t);
+        const amount = r.amount;
+        const label = r.type === "redeem" ? r.label : r.label || kcpT(h, "h_no_reason");
+        const sub = [
+          kcpT(h, r.type === "redeem" ? "h_cashout" : "h_adjust"),
+          d.toLocaleDateString(h.language, { day: "numeric", month: "short" }),
+        ].join(" · ");
+        body += `
+          <div class="row">
+            <div class="main"><div class="lbl">${kcpEsc(label)}</div><div class="sub">${kcpEsc(sub)}</div></div>
+            <div class="amt ${amount < 0 ? "neg" : "pos"}">${amount > 0 ? "+" : ""}${amount} ${kcpEsc(cur)}</div>
+          </div>`;
+      }
+    }
+
+    this.shadowRoot.innerHTML = `
+      <style>
+        ha-card { padding: 16px; }
+        .t { font-size: 1.4em; font-weight: 600; color: var(--primary-text-color); }
+        .s { color: var(--secondary-text-color); margin-top: 2px; }
+        .bal { display: flex; align-items: center; gap: 14px; margin-top: 14px; padding: 14px 16px;
+          border-left: 4px solid var(--c); border-radius: 12px; --c: #64d2ff;
+          background: var(--secondary-background-color, rgba(127,127,127,.1)); }
+        .ico { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; flex: none;
+          color: var(--c); background: color-mix(in srgb, var(--c) 20%, transparent); --mdc-icon-size: 28px; }
+        .big { font-size: 2em; font-weight: 700; color: var(--primary-text-color); line-height: 1.1; }
+        .sec { margin: 16px 0 4px; font-size: .85em; font-weight: 600; color: var(--secondary-text-color); }
+        .row { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
+        .row:not(:last-child) { border-bottom: 1px solid var(--divider-color, rgba(127,127,127,.3)); }
+        .main { flex: 1; min-width: 0; }
+        .lbl { color: var(--primary-text-color); overflow-wrap: anywhere; }
+        .sub { font-size: .8em; color: var(--secondary-text-color); }
+        .amt { flex: none; font-weight: 600; }
+        .amt.pos { color: var(--success-color, #30d158); }
+        .amt.neg { color: var(--error-color, #ff453a); }
+        .empty { padding: 16px 0 0; color: var(--secondary-text-color); }
+      </style>
+      <ha-card>
+        <div class="t">${kcpEsc(cfg.title ?? kcpT(h, "wallet_title"))}</div>
+        ${
+          S
+            ? `<div class="bal">
+                <div class="ico"><ha-icon icon="mdi:wallet"></ha-icon></div>
+                <div><div class="big">${parseInt(w?.state, 10) || 0} ${kcpEsc(cur)}</div>
+                <div class="s">${kcpEsc(kcpT(h, "wallet_sub"))}</div></div>
+              </div>`
+            : ""
+        }
+        ${body}
+      </ha-card>`;
+  }
+}
+
+class KidChoresWalletCardEditor extends KidChoresStatusCardEditor {}
+
+customElements.define("kid-chores-wallet-card", KidChoresWalletCard);
+customElements.define("kid-chores-wallet-card-editor", KidChoresWalletCardEditor);
+window.customCards.push({
+  type: "kid-chores-wallet-card",
+  name: "Kid Chores & Points – Wallet",
+  description: "The child's wallet: current money and recent cash-outs and adjustments.",
   preview: true,
 });

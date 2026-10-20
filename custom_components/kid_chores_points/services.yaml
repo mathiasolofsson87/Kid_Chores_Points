@@ -49,6 +49,22 @@ adjust_points:
       selector:
         config_entry:
           integration: kid_chores_points
+adjust_wallet:
+  fields:
+    amount:
+      required: true
+      selector:
+        number:
+          min: -10000
+          max: 10000
+          mode: box
+    reason:
+      selector:
+        text:
+    config_entry:
+      selector:
+        config_entry:
+          integration: kid_chores_points
 close_week:
   fields:
     config_entry:

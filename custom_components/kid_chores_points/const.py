@@ -16,6 +16,8 @@ CONF_WEEK_START = "week_start"
 CONF_MANDATORY = "mandatory"  # {task name: points}
 CONF_BONUS = "bonus"  # {task name: points}
 CONF_REWARDS = "rewards"  # {reward label (per unit): points cost per unit}
+CONF_REWARD_PAYOUT = "reward_payout"  # {reward label: wallet money per unit}
+CONF_CURRENCY = "currency"  # wallet currency label, e.g. "kr"
 CONF_NOTIFY_KID = "notify_kid"  # extra notify service names for the child
 CONF_NOTIFY_PARENTS = "notify_parents"  # extra notify service names for parents
 CONF_KID_PERSONS = "kid_persons"  # person entity ids
@@ -36,6 +38,8 @@ DEFAULT_OPTIONS = {
     CONF_MANDATORY: {},
     CONF_BONUS: {},
     CONF_REWARDS: {},
+    CONF_REWARD_PAYOUT: {},
+    CONF_CURRENCY: "kr",
     CONF_KID_PERSONS: [],
     CONF_PARENT_PERSONS: [],
     CONF_NOTIFY_KID: [],
@@ -50,5 +54,6 @@ SIGNAL_UPDATE = f"{DOMAIN}_update_{{}}"
 SERVICE_COMPLETE = "complete_chore"
 SERVICE_REDEEM = "redeem"
 SERVICE_ADJUST = "adjust_points"
+SERVICE_ADJUST_WALLET = "adjust_wallet"
 SERVICE_CLOSE_WEEK = "close_week"
 ATTR_ENTRY = "config_entry"

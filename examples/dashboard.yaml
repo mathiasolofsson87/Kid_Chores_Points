@@ -12,11 +12,13 @@
 #      assume the tracker is named "Chores" (e.g. sensor.chores_points_bank).
 #      If you named it differently, find & replace "chores_" with your
 #      tracker's slug (Settings -> Devices & services -> Kid Chores & Points).
-#   2. Rewards are shown by the built-in kid-chores-rewards-card; with
-#      several trackers, pick the tracker in the card editor.
+#   2. Rewards (including cash-out rewards that pay into the wallet) are
+#      shown by the built-in kid-chores-rewards-card; the wallet by the
+#      kid-chores-wallet-card.
 #   3. In Maintenance Supporter, label the mandatory tasks "mandatory" and
-#      the bonus tasks "bonus" (used by the maintenance-supporter-card).
-#      Remove those cards if you complete chores another way.
+#      the bonus tasks "bonus" - the Chores to do / Bonus chores cards only
+#      list tasks with those labels (change filter_labels on the cards to
+#      use other labels).
 #   4. Replace PARENT_USER_ID_1/2 with your HA user ids
 #      (Settings -> People -> Users -> open user -> ID).
 #   5. On the child's account: Profile -> Dashboard -> pick this one.
@@ -64,6 +66,8 @@ views:
       - type: grid
         cards:
           - type: custom:kid-chores-rewards-card
+          # The child's wallet: current money and recent activity.
+          - type: custom:kid-chores-wallet-card
 
   # -------------------------------------------------------------------
   #  Parent view (hidden from the child)
@@ -88,7 +92,7 @@ views:
               action: navigate
               navigation_path: /config/integrations/integration/kid_chores_points
           - type: custom:kid-chores-status-card
-          # Add or deduct points in the bank or this week (use -5 to deduct)
+          # Add or deduct points (bank / this week) or money (wallet); use -5 to deduct
           - type: custom:kid-chores-adjust-card
           # Timeline of every points change and why
           - type: custom:kid-chores-history-card
@@ -104,4 +108,5 @@ views:
               entity_id:
                 - sensor.chores_points_bank
                 - sensor.chores_points_this_week
+                - sensor.chores_wallet
             hours_to_show: 168

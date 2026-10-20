@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from typing import Any
 
 import voluptuous as vol
@@ -28,6 +29,7 @@ from homeassistant.helpers.selector import (
 
 from .const import (
     CONF_BONUS,
+    CONF_CURRENCY,
     CONF_GOAL,
     CONF_GOAL_BONUS,
     CONF_KID_PERSONS,
@@ -36,6 +38,7 @@ from .const import (
     CONF_NOTIFY_PARENTS,
     CONF_PARENT_PERSONS,
     CONF_POLICY,
+    CONF_REWARD_PAYOUT,
     CONF_REWARDS,
     CONF_WEEK_START,
     DEFAULT_OPTIONS,
@@ -102,7 +105,10 @@ class ChoresOptionsFlow(OptionsFlow):
 
     def _load(self) -> dict[str, Any]:
         if not self._opts:
-            self._opts = {**DEFAULT_OPTIONS, **self.config_entry.options}
+            self._opts = {
+                **copy.deepcopy(DEFAULT_OPTIONS),
+                **self.config_entry.options,
+            }
         return self._opts
 
     def _save(self) -> None:
@@ -144,6 +150,7 @@ class ChoresOptionsFlow(OptionsFlow):
             opts[CONF_GOAL_BONUS] = int(user_input[CONF_GOAL_BONUS])
             opts[CONF_POLICY] = user_input[CONF_POLICY]
             opts[CONF_WEEK_START] = user_input[CONF_WEEK_START]
+            opts[CONF_CURRENCY] = user_input[CONF_CURRENCY].strip() or "kr"
             self._save()
             return await self.async_step_init()
         return self.async_show_form(
@@ -170,6 +177,9 @@ class ChoresOptionsFlow(OptionsFlow):
                             mode=SelectSelectorMode.LIST,
                         )
                     ),
+                    vol.Required(
+                        CONF_CURRENCY, default=opts[CONF_CURRENCY]
+                    ): TextSelector(),
                 }
             ),
         )
@@ -242,10 +252,17 @@ class ChoresOptionsFlow(OptionsFlow):
         )
 
     def _describe(self, kind: str) -> str:
-        items = self._load()[kind]
+        opts = self._load()
+        items = opts[kind]
         if not items:
             return "_(none yet)_"
-        return "\n".join(f"- {name}: {pts} p" for name, pts in items.items())
+        payouts = opts[CONF_REWARD_PAYOUT] if kind == CONF_REWARDS else {}
+        cur = opts[CONF_CURRENCY]
+        return "\n".join(
+            f"- {name}: {pts} p"
+            + (f" → {payouts[name]} {cur}" if payouts.get(name) else "")
+            for name, pts in items.items()
+        )
 
     async def _add(
         self,
@@ -257,7 +274,14 @@ class ChoresOptionsFlow(OptionsFlow):
         if user_input is not None:
             name = user_input["name"].strip()
             if name:
-                self._load()[kind][name] = int(user_input["points"])
+                opts = self._load()
+                opts[kind][name] = int(user_input["points"])
+                if kind == CONF_REWARDS:
+                    # 0 = a normal reward, > 0 = pays that much into the wallet
+                    if payout := int(user_input.get("payout", 0)):
+                        opts[CONF_REWARD_PAYOUT][name] = payout
+                    else:
+                        opts[CONF_REWARD_PAYOUT].pop(name, None)
                 self._save()
             return await getattr(self, f"async_step_{kind}")()
         name_selector: Any = TextSelector()
@@ -270,14 +294,16 @@ class ChoresOptionsFlow(OptionsFlow):
                     mode=SelectSelectorMode.DROPDOWN,
                 )
             )
+        schema: dict[Any, Any] = {
+            vol.Required("name"): name_selector,
+            vol.Required("points", default=1): _points(1000),
+        }
+        if kind == CONF_REWARDS:
+            schema[vol.Optional("payout", default=0)] = _points(10000)
         return self.async_show_form(
             step_id=step_id,
-            data_schema=vol.Schema(
-                {
-                    vol.Required("name"): name_selector,
-                    vol.Required("points", default=1): _points(1000),
-                }
-            ),
+            data_schema=vol.Schema(schema),
+            description_placeholders={"currency": self._load()[CONF_CURRENCY]},
         )
 
     async def _remove(
@@ -332,4 +358,7 @@ class ChoresOptionsFlow(OptionsFlow):
         return await self._add(CONF_REWARDS, "rewards_add", user_input)
 
     async def async_step_rewards_remove(self, user_input=None) -> ConfigFlowResult:
+        if user_input is not None:
+            for name in user_input.get("names", []):
+                self._load()[CONF_REWARD_PAYOUT].pop(name, None)
         return await self._remove(CONF_REWARDS, "rewards_remove", user_input)
