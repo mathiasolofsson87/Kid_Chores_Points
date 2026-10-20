@@ -46,8 +46,8 @@ const KCP_TEXT = {
     h_to_bank: "to the bank",
     h_balances: "Week {w} · Bank {b}",
     h_balances_bonus: "Week {w} (+{x} bonus) · Bank {b}",
-    bonus_open: "⭐ Bonus this week: {n} p · banked when the goal is reached",
-    bonus_met: "⭐ Bonus this week: {n} p · will be banked",
+    bonus_open: "⭐ Bonus this week: {n} p\nbanked when the goal is reached",
+    bonus_met: "⭐ Bonus this week: {n} p\nwill be banked",
     h_today: "Today",
     h_yesterday: "Yesterday",
     h_more: "Show more",
@@ -111,8 +111,8 @@ const KCP_TEXT = {
     h_to_bank: "till banken",
     h_balances: "Vecka {w} · Bank {b}",
     h_balances_bonus: "Vecka {w} (+{x} bonus) · Bank {b}",
-    bonus_open: "⭐ Bonus denna vecka: {n} p · sätts in när målet nås",
-    bonus_met: "⭐ Bonus denna vecka: {n} p · sätts in",
+    bonus_open: "⭐ Bonus denna vecka: {n} p\nsätts in när målet nås",
+    bonus_met: "⭐ Bonus denna vecka: {n} p\nsätts in",
     h_today: "Idag",
     h_yesterday: "Igår",
     h_more: "Visa fler",
@@ -495,7 +495,7 @@ class KidChoresStatusCard extends HTMLElement {
         .bar { margin-top: 16px; }
         .bar .lbl { display: flex; justify-content: space-between; color: var(--secondary-text-color); font-size: .9em; margin-bottom: 6px; }
         .track { height: 14px; border-radius: 7px; background: var(--secondary-background-color, rgba(127,127,127,.2)); overflow: hidden; }
-        .bonus { margin-top: 8px; font-size: .9em; color: var(--secondary-text-color); }
+        .bonus { margin-top: 8px; white-space: pre-line; font-size: .9em; color: var(--secondary-text-color); }
         .fill { height: 100%; border-radius: 7px; transition: width .4s; }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
         .tile, .wide { display: flex; align-items: center; gap: 12px; padding: 10px 12px;
