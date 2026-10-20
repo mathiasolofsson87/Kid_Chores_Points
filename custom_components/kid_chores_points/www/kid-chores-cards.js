@@ -910,6 +910,8 @@ class KidChoresTodoCard extends HTMLElement {
     this._sig = "";
     this._tasks = []; // actionable Maintenance Supporter tasks
     this._busy = new Set();
+    this._notes = new Map(); // task name -> Maintenance Supporter notes
+    this._open = new Set(); // names with expanded notes
     this._error = "";
     this._msSig = null;
   }
@@ -967,17 +969,21 @@ class KidChoresTodoCard extends HTMLElement {
         compact: true,
       });
       const tasks = [];
+      const notes = new Map();
       for (const obj of res.objects || []) {
         if (obj.object?.archived) continue;
         for (const t of obj.tasks || []) {
           if (t.archived || t.is_done || !t.sensor_entity_id) continue;
+          if (t.notes && String(t.notes).trim()) notes.set(t.name, String(t.notes).trim());
           const labelOk = !labels.length || (t.labels || []).some((l) => labels.includes(l));
           tasks.push({ name: t.name, entity: t.sensor_entity_id, status: t.status, actionable: labelOk && statuses.includes(t.status) });
         }
       }
       this._tasks = tasks;
+      this._notes = notes;
     } catch {
-      this._tasks = []; // Maintenance Supporter not installed / not reachable
+      this._tasks = [];
+      this._notes = new Map(); // Maintenance Supporter not installed / not reachable
     }
     this._sig = "";
     this._render();
@@ -1017,7 +1023,8 @@ class KidChoresTodoCard extends HTMLElement {
     const h = this._hass, cfg = this._config;
     if (!h || !cfg) return;
     const rows = this._rows();
-    const sig = JSON.stringify([rows, h.language, cfg, [...this._busy], this._error, rows && this._lead(rows)]);
+    if (rows) for (const r of rows) r.notes = this._notes.get(r.name) || "";
+    const sig = JSON.stringify([rows, h.language, cfg, [...this._busy], [...this._open], this._error, rows && this._lead(rows)]);
     if (sig === this._sig) return;
     this._sig = sig;
 
@@ -1032,13 +1039,15 @@ class KidChoresTodoCard extends HTMLElement {
             r.ms?.status === "overdue" ? kcpT(h, "todo_overdue") : ""].filter(Boolean).join(" · ");
           const busy = r.ms && this._busy.has(r.ms.entity);
           return `
-            <div class="row ${r.done ? "done" : ""}" style="--c:${c}">
+            <div class="row ${r.done ? "done" : ""} ${r.notes ? "has-notes" : ""}" data-i="${i}" style="--c:${c}">
               <div class="ico"><ha-icon icon="${r.done ? "mdi:checkbox-marked-circle" : r.icon || "mdi:checkbox-blank-circle-outline"}"></ha-icon></div>
               <div class="txt">
                 <div class="primary">${kcpEsc(r.name)}</div>
                 ${sub ? `<div class="secondary">${kcpEsc(sub)}</div>` : ""}
               </div>
+              ${r.notes ? `<ha-icon class="info" icon="${this._open.has(r.name) ? "mdi:chevron-up" : "mdi:information-outline"}"></ha-icon>` : ""}
               ${r.ms ? `<button class="btn" data-i="${i}" ${busy ? "disabled" : ""}><ha-icon icon="mdi:check"></ha-icon>${kcpEsc(kcpT(h, "todo_btn"))}</button>` : ""}
+              ${r.notes && this._open.has(r.name) ? `<div class="notes">${kcpEsc(r.notes).replace(/\n/g, "<br>")}</div>` : ""}
             </div>`;
         })
         .join("");
@@ -1049,7 +1058,7 @@ class KidChoresTodoCard extends HTMLElement {
       <style>
         ha-card { padding: 16px; }
         .t { font-size: 1.4em; font-weight: 600; color: var(--primary-text-color); margin-bottom: 12px; }
-        .row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; margin-top: 8px;
+        .row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 10px 12px; margin-top: 8px;
           background: var(--secondary-background-color, rgba(127,127,127,.1));
           border-left: 4px solid var(--c); border-radius: 12px; }
         .ico { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; flex: none;
@@ -1065,6 +1074,10 @@ class KidChoresTodoCard extends HTMLElement {
         .all { margin-top: 12px; padding: 12px; text-align: center; font-weight: 600;
           color: var(--primary-text-color); }
         .empty { color: var(--secondary-text-color); }
+        .row.has-notes { cursor: pointer; }
+        .info { flex: none; color: var(--secondary-text-color); --mdc-icon-size: 20px; }
+        .notes { flex: 1 0 100%; padding-top: 8px; border-top: 1px solid var(--divider-color, rgba(127,127,127,.3));
+          font-size: .95em; color: var(--primary-text-color); overflow-wrap: anywhere; cursor: default; }
         .lock { padding: 4px 0; color: var(--primary-text-color); }
         .err { margin-top: 10px; font-size: .9em; color: var(--error-color, #db4437); }
       </style>
@@ -1075,7 +1088,19 @@ class KidChoresTodoCard extends HTMLElement {
       </ha-card>`;
 
     this.shadowRoot.querySelectorAll(".btn").forEach((el) => {
-      el.addEventListener("click", () => this._complete(rows[Number(el.dataset.i)].ms));
+      el.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        this._complete(rows[Number(el.dataset.i)].ms);
+      });
+    });
+    this.shadowRoot.querySelectorAll(".row.has-notes").forEach((el) => {
+      el.addEventListener("click", (ev) => {
+        if (ev.target.closest(".notes")) return;
+        const name = rows[Number(el.dataset.i)].name;
+        if (!this._open.delete(name)) this._open.add(name);
+        this._sig = "";
+        this._render();
+      });
     });
   }
 

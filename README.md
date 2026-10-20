@@ -91,6 +91,8 @@ chips:
 
 **Add card → Kid Chores & Points – Chores to do** replaces the markdown list and the Maintenance Supporter card for the mandatory chores. Each configured mandatory chore is one line: ticked and struck through when done, with its points. Chores that are still open and due in Maintenance Supporter get a **Done** button (calls `maintenance_supporter.complete` as the logged-in user, so the usual child-user rule applies). Maintenance Supporter tasks with the label but not in your mandatory list are added as extra lines. When everything is done a "great job" line is shown.
 
+If the Maintenance Supporter task has **notes**, the chore shows an info icon; tap the chore to expand or collapse the notes (both cards).
+
 A chore that also exists as a Maintenance Supporter task is only shown while that task matches the label and status filters (done chores stay visible, ticked); a chore with no Maintenance Supporter task is always shown.
 
 Options (all also in the card editor – labels are offered from your Maintenance Supporter tasks, and you can type others): `title`, `device`, `filter_labels` (Maintenance Supporter labels to include, default `[mandatory]`; `[]` for all tasks), `filter_status` (default `[overdue, triggered, due_soon]`). A task that needs a checklist, readings or a tag scan can't be completed with the button and shows the error instead – complete those in the Maintenance Supporter card.
