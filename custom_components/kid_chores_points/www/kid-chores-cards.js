@@ -971,8 +971,8 @@ class KidChoresTodoCard extends HTMLElement {
         if (obj.object?.archived) continue;
         for (const t of obj.tasks || []) {
           if (t.archived || t.is_done || !t.sensor_entity_id) continue;
-          if (labels.length && !(t.labels || []).some((l) => labels.includes(l))) continue;
-          tasks.push({ name: t.name, entity: t.sensor_entity_id, status: t.status, actionable: statuses.includes(t.status) });
+          const labelOk = !labels.length || (t.labels || []).some((l) => labels.includes(l));
+          tasks.push({ name: t.name, entity: t.sensor_entity_id, status: t.status, actionable: labelOk && statuses.includes(t.status) });
         }
       }
       this._tasks = tasks;
@@ -1001,8 +1001,11 @@ class KidChoresTodoCard extends HTMLElement {
     const rows = [];
     for (const name of attrs.done || []) rows.push({ name, done: true, pts: pts[name] });
     for (const name of attrs.remaining || []) {
-      rows.push({ name, done: false, pts: pts[name], ms: byName.get(name)?.actionable ? byName.get(name) : null });
+      const t = byName.get(name);
       byName.delete(name);
+      // A chore that exists in Maintenance Supporter is only shown while it matches the filters.
+      if (t && !t.actionable) continue;
+      rows.push({ name, done: false, pts: pts[name], ms: t || null });
     }
     for (const t of byName.values()) {
       if (t.actionable) rows.push({ name: t.name, done: false, ms: t });
@@ -1226,9 +1229,14 @@ class KidChoresBonusCard extends KidChoresTodoCard {
     const byName = new Map(this._tasks.map((t) => [t.name, t]));
     const rows = [];
     for (const [name, pts] of Object.entries(attrs.bonus_chores || {})) {
-      const ms = byName.get(name)?.actionable ? byName.get(name) : null;
+      const t = byName.get(name);
       byName.delete(name);
-      rows.push({ name, pts, ms, done: !ms && doneToday.includes(name), icon: "mdi:star-circle-outline" });
+      const ms = t?.actionable ? t : null;
+      const done = !ms && doneToday.includes(name);
+      // A chore that exists in Maintenance Supporter is only shown while it matches the filters
+      // (or as ticked, if it was already done today).
+      if (t && !ms && !done) continue;
+      rows.push({ name, pts, ms, done, icon: "mdi:star-circle-outline" });
     }
     for (const t of byName.values()) {
       if (t.actionable) rows.push({ name: t.name, ms: t, done: false, icon: "mdi:star-circle-outline" });
