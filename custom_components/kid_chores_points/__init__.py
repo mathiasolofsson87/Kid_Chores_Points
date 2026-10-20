@@ -102,7 +102,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     hass.services.async_register(
         DOMAIN,
         SERVICE_ADJUST,
-    SERVICE_ADJUST_WALLET,
         adjust,
         vol.Schema(
             {
