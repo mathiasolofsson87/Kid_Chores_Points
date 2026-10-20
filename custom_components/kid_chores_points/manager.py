@@ -103,6 +103,7 @@ class ChoresManager:
         stored = await self._store.async_load() or {}
         self.data = {
             "week": 0,
+            "week_bonus": 0,  # bonus points this week, banked only if the goal is met
             "bank": 0,
             "wallet": 0,
             "last_week": "",
@@ -115,6 +116,10 @@ class ChoresManager:
     @property
     def week(self) -> int:
         return int(self.data["week"])
+
+    @property
+    def week_bonus(self) -> int:
+        return int(self.data["week_bonus"])
 
     @property
     def bank(self) -> int:
@@ -158,6 +163,7 @@ class ChoresManager:
                 "target": target,
                 "pending": pending,
                 "week": self.week,
+                "week_bonus": self.week_bonus,
                 "bank": self.bank,
                 "amount": amount,
                 "wallet": self.wallet,
@@ -313,7 +319,7 @@ class ChoresManager:
                     pending_sum = sum(p["points"] for p in released)
                     award = pending_sum
                     for p in released:
-                        self.data["week"] = self.week + int(p["points"])
+                        self.data["week_bonus"] = self.week_bonus + int(p["points"])
                         self._record("bonus_released", p["name"], int(p["points"]))
                     today["bonus_done"].extend(p["name"] for p in today["pending"])
                     today["pending"] = []
@@ -330,7 +336,7 @@ class ChoresManager:
                 pts = int(bonus[task])
                 remaining = self.mandatory_remaining()
                 if not remaining:
-                    self.data["week"] = self.week + pts
+                    self.data["week_bonus"] = self.week_bonus + pts
                     today["bonus_done"].append(task)
                     today["points"] += pts
                     self._record("bonus", task, pts)
@@ -458,23 +464,30 @@ class ChoresManager:
 
     async def async_close_week(self) -> None:
         async with self._lock:
-            week, goal = self.week, self.goal
+            # the goal is measured on mandatory points only; bonus points are
+            # banked in full if it is met and lost otherwise
+            week, goal, bonus = self.week, self.goal, self.week_bonus
             met = week >= goal
             policy = self.opt(CONF_POLICY)
             if met:
-                to_bank = week + int(self.opt(CONF_GOAL_BONUS))
+                to_bank = week + int(self.opt(CONF_GOAL_BONUS)) + bonus
             elif policy == POLICY_HALF:
                 to_bank = week // 2
             elif policy == POLICY_FORFEIT:
                 to_bank = 0
             else:
                 to_bank = week
+            note = ""
+            if bonus:
+                note = self.tr("bonus_banked" if met else "bonus_lost", bonus=bonus)
             self.data["bank"] = self.bank + to_bank
             bank = self.bank
             self.data["week"] = 0
+            self.data["week_bonus"] = 0
             self._record(
                 "week_close",
-                f"{week}/{goal} {'✓' if met else '✗'}",
+                f"{week}/{goal} {'✓' if met else '✗'}"
+                + (f" · ★{bonus}{'' if met else ' ✗'}" if bonus else ""),
                 to_bank,
                 "bank",
             )
@@ -484,13 +497,14 @@ class ChoresManager:
                 goal=goal,
                 mark="✓" if met else "✗",
                 to_bank=to_bank,
-            )
+            ) + (f" · {note}" if note else "")
             self._changed()
         await self._log(self.tr("week_log", week=week, goal=goal, to_bank=to_bank))
         await self._notify(
             CONF_NOTIFY_KID,
             self.tr("week_met_title" if met else "week_over_title"),
-            self.tr("week_kid", week=week, goal=goal, to_bank=to_bank, bank=bank),
+            self.tr("week_kid", week=week, goal=goal, to_bank=to_bank, bank=bank)
+            + (f" {note}" if note else ""),
         )
         await self._notify(
             CONF_NOTIFY_PARENTS,
@@ -502,7 +516,8 @@ class ChoresManager:
                 to_bank=to_bank,
                 bank=bank,
                 result=self.tr("goal_met" if met else "goal_missed"),
-            ),
+            )
+            + (f" {note}" if note else ""),
         )
 
     # ------------------------------------------------------------------

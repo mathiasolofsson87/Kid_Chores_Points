@@ -33,7 +33,7 @@ def _progress(m: ChoresManager) -> int:
 SENSORS: tuple[ChoresSensorDescription, ...] = (
     ChoresSensorDescription(
         key="points_week",
-        name="Points this week",
+        name="Points this week",  # mandatory points; bonus is counted separately
         icon="mdi:star",
         native_unit_of_measurement="p",
         state_class=SensorStateClass.MEASUREMENT,
@@ -58,6 +58,16 @@ SENSORS: tuple[ChoresSensorDescription, ...] = (
             # cards show the wallet once it is in use
             "enabled": bool(m.payouts) or m.wallet > 0,
         },
+    ),
+    ChoresSensorDescription(
+        key="bonus_week",
+        name="Bonus points this week",
+        icon="mdi:star-plus",
+        native_unit_of_measurement="p",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda m: m.week_bonus,
+        # bonus points are banked only if the weekly goal (mandatory points) is met
+        attrs_fn=lambda m: {"enabled": bool(m.bonus) or m.week_bonus > 0},
     ),
     ChoresSensorDescription(
         key="weekly_goal",

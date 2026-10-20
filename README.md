@@ -9,7 +9,7 @@ A Home Assistant integration that turns chore completions into points, a weekly 
 3. **Settings → Devices & services → Add integration → Kid Chores & Points**. Give it a name (one per child).
 4. Click **Configure** on the integration to set up everything in the UI:
    - **Mandatory chores** – pick a task from the Maintenance Supporter list (free-text names also work) + points. Matching is by task name, so if you rename a task in Maintenance Supporter, use **Edit a chore** and pick the new name. Counted once per day.
-   - **Bonus chores** – pick a task + points. Only paid once all mandatory chores are done that day; earlier completions are held as *pending* and paid out when the last mandatory chore is done. Pending points are dropped at midnight. Unlike mandatory chores, a bonus chore pays every time it is completed.
+   - **Bonus chores** – pick a task + points. Only paid once all mandatory chores are done that day; earlier completions are held as *pending* and paid out when the last mandatory chore is done. Pending points are dropped at midnight. Unlike mandatory chores, a bonus chore pays every time it is completed. Bonus points are collected separately from the weekly goal and are only banked if the goal is met (see below).
    - **Rewards** – name per unit (e.g. `15 min Xbox`) + point cost. Optionally set **Pays into the wallet** to turn a reward into a cash-out (see [Wallet](#wallet)).
    - **Goal, policy & currency** – first day of the week, weekly goal, extra bank points when reached, what happens if the goal is missed (bank all / bank half / forfeit), and the wallet currency label (default `kr`).
    - **Notifications** – pick the child and parents as Home Assistant **persons**; their Companion-app phones are found automatically. Extra `notify` services (tablet, group) can be added too.
@@ -31,20 +31,25 @@ If the child **person** (Configure → Notifications) has a linked Home Assistan
 
 ## Weekly goal, bonus and the bank
 
-When the week closes (23:59 on the day before the first day of the week), the week's points move to the bank and the weekly counter resets to 0.
+Points are counted in two separate piles during the week:
 
-- **Goal reached** (points this week ≥ weekly goal): the bank receives the week's points **plus the goal bonus**. The bonus is a flat amount on top of the points earned. Set it to 0 for no bonus.
-- **Goal missed:** the bank receives points according to the *missed goal* setting – **all** points, **half** (rounded down), or **none** (forfeit). No bonus is paid.
+- **Points this week** – points from **mandatory** chores. Only these count towards the weekly goal and the progress bar.
+- **Bonus points this week** – points from **bonus** chores (once released, see above). They never count towards the goal; they just wait to be banked.
 
-Example with goal 50 and bonus 10:
+When the week closes (23:59 on the day before the first day of the week) both piles are reset to 0 and the bank is credited:
 
-| Points earned | Goal reached? | Bank receives |
+- **Goal reached** (mandatory points ≥ weekly goal): the bank receives the mandatory points **plus the goal bonus plus all bonus points**. The goal bonus is a flat extra amount on top; set it to 0 for none.
+- **Goal missed:** the bank receives the mandatory points according to the *missed goal* setting – **all**, **half** (rounded down), or **none** (forfeit). The goal bonus is not paid and **the week's bonus points are lost**.
+
+Example with goal 50, goal bonus 10 and 12 bonus points earned:
+
+| Mandatory points | Goal reached? | Bank receives |
 |---|---|---|
-| 55 | Yes | 55 + 10 = **65** |
-| 50 | Yes | 50 + 10 = **60** |
-| 40 | No | **40** (bank all) / **20** (bank half) / **0** (forfeit) |
+| 55 | Yes | 55 + 10 + 12 = **77** |
+| 50 | Yes | 50 + 10 + 12 = **72** |
+| 40 | No | **40** (bank all) / **20** (bank half) / **0** (forfeit) – the 12 bonus points are lost |
 
-The bonus only shows up in the bank and in the *last week result* sensor, never in *points this week*. Both child and parents are notified when the week closes.
+Child and parents are notified when the week closes, including how many bonus points were banked or lost, and the result is kept in the *last week result* sensor. Bonus points collected before updating to this behaviour stay in that week's mandatory total.
 
 ## Wallet
 
@@ -68,7 +73,7 @@ Notifications, logbook entries and the "last week result" text use the Home Assi
 
 ## Entities (per tracker)
 
-- **Sensors:** points this week, points bank, **wallet** (unit = your currency), weekly goal, points to goal, week progress, points today, mandatory chores remaining (attributes list remaining/done chores and the configured chores), pending bonus points, points history (the `history` attribute holds the timeline), last week result.
+- **Sensors:** points this week (mandatory only), bonus points this week, points bank, **wallet** (unit = your currency), weekly goal, points to goal, week progress, points today, mandatory chores remaining (attributes list remaining/done chores and the configured chores), pending bonus points, points history (the `history` attribute holds the timeline), last week result.
 - **Binary sensors:** mandatory chores complete, and `can afford <reward>` for each reward (attributes: cost, payout, bank).
 - **To-do:** redeemed rewards.
 
@@ -102,7 +107,7 @@ With several trackers, pick which one in each card's editor (`device:`). If a ca
 
 ### Status card
 
-Shows one child's overview: the weekly goal, a progress bar towards it (red < 50 %, yellow ≥ 50 %, green at 100 %), tiles for *this week*, *left to goal*, *today* and the *points bank*, the *wallet* once it is in use (a cash-out reward is configured, or there is money in it), and last week's result once there is one. `title:` is optional.
+Shows one child's overview: the weekly goal, a progress bar towards it (red < 50 %, yellow ≥ 50 %, green at 100 %), the bonus points collected so far this week right under the bar ("banked when the goal is reached", or "will be banked" once the goal is met; shown when you have bonus chores), tiles for *this week* (mandatory points), *left to goal*, *today* (all points) and the *points bank*, the *wallet* once it is in use (a cash-out reward is configured, or there is money in it), and last week's result once there is one. `title:` is optional.
 
 Optional shortcut chips (YAML only), e.g. a button to the parents' view that only some users see:
 
@@ -117,17 +122,17 @@ chips:
 
 ### Chores to do card
 
-Each configured mandatory chore is one line: ticked and struck through when done, with its points. Chores that are still open and due in Maintenance Supporter get a **Done** button (calls `maintenance_supporter.complete` as the logged-in user, so the usual child-user rule applies). Maintenance Supporter tasks with the label but not in your mandatory list are added as extra lines. When everything is done a "great job" line is shown.
+Each mandatory chore that is still open is one line with its points; a chore disappears from the list as soon as it is done. Chores that are still open and due in Maintenance Supporter get a **Done** button (calls `maintenance_supporter.complete` as the logged-in user, so the usual child-user rule applies). Maintenance Supporter tasks with the label but not in your mandatory list are added as extra lines. When everything is done a "great job" line is shown.
 
 If the Maintenance Supporter task has **notes**, the chore shows an info icon; tap the chore to expand or collapse the notes (both this card and the Bonus card).
 
-A chore that also exists as a Maintenance Supporter task is only shown while that task matches the label and status filters (done chores stay visible, ticked); a chore with no Maintenance Supporter task is always shown.
+A chore that also exists as a Maintenance Supporter task is only shown while that task matches the label and status filters (done chores are not shown); a chore with no Maintenance Supporter task is always shown.
 
 Options (all also in the card editor – labels are offered from your Maintenance Supporter tasks, and you can type others): `title`, `device`, `filter_labels` (Maintenance Supporter labels to include, default `[mandatory]`; `[]` for all tasks), `filter_status` (default `[overdue, triggered, due_soon]`). A task that needs a checklist, readings or a tag scan can't be completed with the button and shows the error instead – complete those in Maintenance Supporter itself.
 
 ### Bonus chores card
 
-The bonus counterpart of the *Chores to do* card. While today's mandatory chores are open it shows only the lock hint ("Bonus chores unlock when today's chores are done") and, if any bonus points are being held, how many are waiting. Once the mandatory chores are done it lists your bonus chores with their points, plus **Done** buttons for the matching Maintenance Supporter tasks. Options and editor are the same as the *Chores to do* card, except `filter_labels` defaults to `[bonus]`.
+The bonus counterpart of the *Chores to do* card. While today's mandatory chores are open it shows only the lock hint ("Bonus chores unlock when today's chores are done") and, if any bonus points are being held, how many are waiting. Once the mandatory chores are done it lists your bonus chores with their points (a bonus chore you've already done today is hidden), plus **Done** buttons for the matching Maintenance Supporter tasks. Options and editor are the same as the *Chores to do* card, except `filter_labels` defaults to `[bonus]`.
 
 ### Rewards card
 
@@ -153,11 +158,11 @@ A big balance with the child's current money, and the most recent cash-outs and 
 
 ### Adjust points card
 
-A parent tool in one card: choose **Bank**, **This week** or **Wallet**, type a number (`5` to add, `-5` to deduct), optionally a reason (shown in the logbook), and press **Apply**. Points totals and the wallet never go below 0. Put it on a parents-only view.
+A parent tool in one card: choose **Bank**, **This week** (the mandatory points that count towards the goal) or **Wallet**, type a number (`5` to add, `-5` to deduct), optionally a reason (shown in the logbook), and press **Apply**. Points totals and the wallet never go below 0. Put it on a parents-only view.
 
 ### History card
 
-A parent timeline of every change, newest first and grouped by day: completed chores, bonus chores (including ones held as pending and later released), redeemed rewards and cash-outs (with the money received), manual adjustments of points and the wallet with their reason, and week closes. Each entry shows the amount, the reason/label and (optionally) the week, bank and wallet balance afterwards. The last 300 changes are kept. Options (YAML): `limit` (entries per page, default 30), `show_balances: false` to hide the balances, `title`, `device`. The data is also available as the `history` attribute of the *Points history* sensor.
+A parent timeline of every change, newest first and grouped by day: completed chores, bonus chores (including ones held as pending and later released), redeemed rewards and cash-outs (with the money received), manual adjustments of points and the wallet with their reason, and week closes. Each entry shows the amount, the reason/label and (optionally) the week (with bonus), bank and wallet balance afterwards. The last 300 changes are kept. Options (YAML): `limit` (entries per page, default 30), `show_balances: false` to hide the balances, `title`, `device`. The data is also available as the `history` attribute of the *Points history* sensor.
 
 ## Maintenance Supporter labels
 

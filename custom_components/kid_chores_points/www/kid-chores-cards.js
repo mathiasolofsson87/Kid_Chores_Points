@@ -20,7 +20,7 @@ const KCP_TEXT = {
     this_week: "This week",
     to_goal: "Left to goal",
     today: "Today",
-    bank: "Points bank",
+    bank: "Bank",
     last_week: "Last week",
     adjust_title: "Adjust points",
     adjust_target: "Adjust",
@@ -45,6 +45,9 @@ const KCP_TEXT = {
     h_no_reason: "No reason given",
     h_to_bank: "to the bank",
     h_balances: "Week {w} · Bank {b}",
+    h_balances_bonus: "Week {w} (+{x} bonus) · Bank {b}",
+    bonus_open: "⭐ Bonus this week: {n} p · banked when the goal is reached",
+    bonus_met: "⭐ Bonus this week: {n} p · will be banked",
     h_today: "Today",
     h_yesterday: "Yesterday",
     h_more: "Show more",
@@ -57,9 +60,8 @@ const KCP_TEXT = {
     bonus_title: "Bonus chores",
     bonus_locked: "🔒 Bonus chores unlock when today's chores are done.",
     bonus_pending: "⏳ {n} bonus points are waiting to be added!",
-    bonus_none: "No bonus chores configured yet.",
+    bonus_none: "No bonus chores available right now.",
     wallet_title: "Wallet",
-    wallet_sub: "Money you have saved",
     t_wallet: "Wallet",
     adjust_amount: "Amount (use - to deduct)",
     w_recent: "Recent activity",
@@ -83,7 +85,7 @@ const KCP_TEXT = {
     this_week: "Denna vecka",
     to_goal: "Kvar till målet",
     today: "Idag",
-    bank: "Poängbanken",
+    bank: "Banken",
     last_week: "Förra veckan",
     adjust_title: "Justera poäng",
     adjust_target: "Justera",
@@ -108,6 +110,9 @@ const KCP_TEXT = {
     h_no_reason: "Ingen anledning angiven",
     h_to_bank: "till banken",
     h_balances: "Vecka {w} · Bank {b}",
+    h_balances_bonus: "Vecka {w} (+{x} bonus) · Bank {b}",
+    bonus_open: "⭐ Bonus denna vecka: {n} p · sätts in när målet nås",
+    bonus_met: "⭐ Bonus denna vecka: {n} p · sätts in",
     h_today: "Idag",
     h_yesterday: "Igår",
     h_more: "Visa fler",
@@ -120,9 +125,8 @@ const KCP_TEXT = {
     bonus_title: "Bonusuppgifter",
     bonus_locked: "🔒 Bonusuppgifter låses upp när dagens uppgifter är klara.",
     bonus_pending: "⏳ {n} bonuspoäng väntar på att läggas till!",
-    bonus_none: "Inga bonusuppgifter inställda än.",
+    bonus_none: "Inga bonusuppgifter tillgängliga just nu.",
     wallet_title: "Plånbok",
-    wallet_sub: "Pengar du har sparat",
     t_wallet: "Plånboken",
     adjust_amount: "Belopp (använd - för avdrag)",
     w_recent: "Senaste händelser",
@@ -452,6 +456,9 @@ class KidChoresStatusCard extends HTMLElement {
     const chips = this._chips();
     const sig = JSON.stringify([
       S && Object.entries(S).map(([k, v]) => (k === "_device" ? v : [k, v.state])),
+      S?.bonus_week?.attributes.enabled,
+      S?.wallet?.attributes.enabled,
+      S?.wallet?.attributes.currency,
       h.language,
       this._config,
       chips,
@@ -488,6 +495,7 @@ class KidChoresStatusCard extends HTMLElement {
         .bar { margin-top: 16px; }
         .bar .lbl { display: flex; justify-content: space-between; color: var(--secondary-text-color); font-size: .9em; margin-bottom: 6px; }
         .track { height: 14px; border-radius: 7px; background: var(--secondary-background-color, rgba(127,127,127,.2)); overflow: hidden; }
+        .bonus { margin-top: 8px; font-size: .9em; color: var(--secondary-text-color); }
         .fill { height: 100%; border-radius: 7px; transition: width .4s; }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
         .tile, .wide { display: flex; align-items: center; gap: 12px; padding: 10px 12px;
@@ -516,6 +524,11 @@ class KidChoresStatusCard extends HTMLElement {
         <div class="bar">
           <div class="lbl"><span>${kcpEsc(kcpT(h, "progress"))}</span><span>${pct}%</span></div>
           <div class="track"><div class="fill" style="width:${pct}%;background:${barColor}"></div></div>
+          ${
+            S.bonus_week?.attributes.enabled
+              ? `<div class="bonus">${kcpEsc(kcpT(h, pct >= 100 ? "bonus_met" : "bonus_open", { n: n("bonus_week") }))}</div>`
+              : ""
+          }
         </div>
         <div class="grid">
           ${tile("mdi:star", "#ffd60a", `${n("points_week")} p`, kcpT(h, "this_week"))}
@@ -873,7 +886,7 @@ class KidChoresHistoryCard extends HTMLElement {
           <div class="main">
             <div class="lbl">${kcpEsc(label)}</div>
             <div class="sub">${kcpEsc(sub)}</div>
-            ${balances ? `<div class="sub">${kcpEsc(kcpT(h, "h_balances", { w: r.week, b: r.bank }) + (r.wallet !== undefined && S?.wallet?.attributes.enabled ? ` · ${kcpT(h, "wallet_title")} ${r.wallet} ${cur}` : ""))}</div>` : ""}
+            ${balances ? `<div class="sub">${kcpEsc(kcpT(h, r.week_bonus ? "h_balances_bonus" : "h_balances", { w: r.week, x: r.week_bonus, b: r.bank }) + (r.wallet !== undefined && S?.wallet?.attributes.enabled ? ` · ${kcpT(h, "wallet_title")} ${r.wallet} ${cur}` : ""))}</div>` : ""}
           </div>
           <div class="pts ${cls}">${sign}${pts} ${kcpEsc(unit)}${kcpEsc(where)}${gain ? `<div class="gain">${kcpEsc(gain)}</div>` : ""}</div>
         </div>`;
@@ -1040,7 +1053,7 @@ class KidChoresTodoCard extends HTMLElement {
     const pts = attrs.mandatory_chores || {};
     const byName = new Map(this._tasks.map((t) => [t.name, t]));
     const rows = [];
-    for (const name of attrs.done || []) rows.push({ name, done: true, pts: pts[name] });
+    // done chores are not listed
     for (const name of attrs.remaining || []) {
       const t = byName.get(name);
       byName.delete(name);
@@ -1244,7 +1257,7 @@ customElements.define("kid-chores-todo-card-editor", KidChoresTodoCardEditor);
 window.customCards.push({
   type: "kid-chores-todo-card",
   name: "Kid Chores & Points – Chores to do",
-  description: "Today's mandatory chores, one per line with ticks, plus Done buttons for the matching Maintenance Supporter tasks.",
+  description: "Today's open mandatory chores, one per line, plus Done buttons for the matching Maintenance Supporter tasks.",
   preview: true,
 });
 
@@ -1292,11 +1305,11 @@ class KidChoresBonusCard extends KidChoresTodoCard {
       const t = byName.get(name);
       byName.delete(name);
       const ms = t?.actionable ? t : null;
-      const done = !ms && doneToday.includes(name);
-      // A chore that exists in Maintenance Supporter is only shown while it matches the filters
-      // (or as ticked, if it was already done today).
-      if (t && !ms && !done) continue;
-      rows.push({ name, pts, ms, done, icon: "mdi:star-circle-outline" });
+      // A chore that exists in Maintenance Supporter is only shown while it matches the filters;
+      // one that was already done today is not shown (unless it is due again).
+      if (t && !ms) continue;
+      if (!ms && doneToday.includes(name)) continue;
+      rows.push({ name, pts, ms, done: false, icon: "mdi:star-circle-outline" });
     }
     for (const t of byName.values()) {
       if (t.actionable) rows.push({ name: t.name, ms: t, done: false, icon: "mdi:star-circle-outline" });
@@ -1422,8 +1435,7 @@ class KidChoresWalletCard extends HTMLElement {
           S
             ? `<div class="bal">
                 <div class="ico"><ha-icon icon="mdi:wallet"></ha-icon></div>
-                <div><div class="big">${parseInt(w?.state, 10) || 0} ${kcpEsc(cur)}</div>
-                <div class="s">${kcpEsc(kcpT(h, "wallet_sub"))}</div></div>
+                <div class="big">${parseInt(w?.state, 10) || 0} ${kcpEsc(cur)}</div>
               </div>`
             : ""
         }
