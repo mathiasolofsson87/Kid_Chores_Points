@@ -19,11 +19,16 @@ CONF_CHORE_IDS = "chore_ids"  # {chore name: Maintenance Supporter task id}
 CONF_REWARDS = "rewards"  # {reward label (per unit): points cost per unit}
 CONF_REWARD_PAYOUT = "reward_payout"  # {reward label: wallet money per unit}
 CONF_HISTORY_LIMIT = "history_limit"  # how many history entries are kept
+CONF_BEDTIME = "bedtime"  # "HH:MM", empty = no reminder
+CONF_BEDTIME_WEEKEND = "bedtime_weekend"  # "HH:MM" for Friday and Saturday nights, empty = same
+CONF_BEDTIME_LEAD = "bedtime_lead"  # minutes before bedtime to send the reminder
 CONF_CURRENCY = "currency"  # wallet currency label, e.g. "kr"
 CONF_NOTIFY_KID = "notify_kid"  # extra notify service names for the child
 CONF_NOTIFY_PARENTS = "notify_parents"  # extra notify service names for parents
 CONF_KID_PERSONS = "kid_persons"  # person entity ids
 CONF_PARENT_PERSONS = "parent_persons"  # person entity ids
+
+WEEKEND_NIGHTS = (4, 5)  # weekday() of Friday and Saturday: no school the next day
 
 WEEK_DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]  # index = weekday()
 
@@ -44,6 +49,9 @@ DEFAULT_OPTIONS = {
     CONF_REWARD_PAYOUT: {},
     CONF_CURRENCY: "kr",
     CONF_HISTORY_LIMIT: 300,
+    CONF_BEDTIME: "",
+    CONF_BEDTIME_WEEKEND: "",
+    CONF_BEDTIME_LEAD: 45,
     CONF_KID_PERSONS: [],
     CONF_PARENT_PERSONS: [],
     CONF_NOTIFY_KID: [],

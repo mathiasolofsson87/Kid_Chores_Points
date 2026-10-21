@@ -23,6 +23,7 @@
           "bonus": "Bonus chores",
           "rewards": "Rewards",
           "settings": "Goal, policy & currency",
+          "bedtime": "Bedtime reminder",
           "notifications": "Notifications",
           "finish": "Finish"
         }
@@ -177,10 +178,25 @@
           "points": "Points"
         },
         "description": "Change the points, or pick another task / type another name to rename the chore. A chore picked from the list stays linked to its task, so renaming the task in Maintenance Supporter doesn't break it. A name you type matches on the task name only."
+      },
+      "bedtime": {
+        "title": "Bedtime reminder",
+        "description": "Set the child's bedtime to send a reminder to the child's device if mandatory chores are still open. Leave both times empty for no reminder. The notification goes to the child's phone and extra notify services (see Notifications).",
+        "data": {
+          "bedtime": "School nights",
+          "bedtime_weekend": "Weekend",
+          "bedtime_lead": "Remind this many minutes before bedtime"
+        },
+        "data_description": {
+          "bedtime": "The bedtime on school nights. The reminder is sent only if some mandatory chores are not done yet.",
+          "bedtime_weekend": "Bedtime on Fridays and Saturdays. Optional; leave empty to use the school-night bedtime every night.",
+          "bedtime_lead": "Minutes before bedtime, 5–240."
+        }
       }
     },
     "error": {
-      "name_exists": "An item with this name already exists. Use Edit to change it."
+      "name_exists": "An item with this name already exists. Use Edit to change it.",
+      "lead_too_long": "The reminder would fall before midnight. Use a shorter time or a later bedtime."
     }
   },
   "selector": {

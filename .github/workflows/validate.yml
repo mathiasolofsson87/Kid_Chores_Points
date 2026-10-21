@@ -35,3 +35,19 @@ jobs:
           cache-dependency-path: requirements_test.txt
       - run: pip install -r requirements_test.txt
       - run: pytest
+
+  cards:
+    name: Dashboard cards
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      # the integration serves the built file, so it must match frontend/src
+      - name: Built card file is up to date
+        run: git diff --exit-code -- custom_components/kid_chores_points/www/kid-chores-cards.js
+      - run: npm test

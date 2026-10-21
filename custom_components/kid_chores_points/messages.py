@@ -42,6 +42,9 @@ MESSAGES: dict[str, dict[str, str]] = {
         "undo_log": "undid: {label}",
         "undo_parents_title": "Change undone ↩️",
         "undo_parents": "Undid: {label}. Bank balance is now {bank} points.",
+        "bedtime_title": "Almost bedtime 🌙",
+        "bedtime_one": "Just one left: {left}",
+        "bedtime_many": "{n} chores left today:\n{left}",
     },
     "sv": {
         "mandatory_done_title": "Dagens uppgifter klara! ⭐",
@@ -82,6 +85,9 @@ MESSAGES: dict[str, dict[str, str]] = {
         "undo_log": "ångrade: {label}",
         "undo_parents_title": "Ändring ångrad ↩️",
         "undo_parents": "Ångrade: {label}. Banksaldot är nu {bank} poäng.",
+        "bedtime_title": "Snart läggdags 🌙",
+        "bedtime_one": "Bara en kvar: {left}",
+        "bedtime_many": "{n} sysslor kvar idag:\n{left}",
     },
 }
 

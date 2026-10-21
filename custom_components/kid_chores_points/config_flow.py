@@ -14,6 +14,7 @@ from homeassistant.config_entries import (
     OptionsFlow,
 )
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.util import dt as dt_util
 from homeassistant.helpers.selector import (
     EntitySelector,
     EntitySelectorConfig,
@@ -25,9 +26,13 @@ from homeassistant.helpers.selector import (
     SelectSelectorConfig,
     SelectSelectorMode,
     TextSelector,
+    TimeSelector,
 )
 
 from .const import (
+    CONF_BEDTIME,
+    CONF_BEDTIME_LEAD,
+    CONF_BEDTIME_WEEKEND,
     CONF_BONUS,
     CONF_CHORE_IDS,
     CONF_CURRENCY,
@@ -146,6 +151,7 @@ class ChoresOptionsFlow(OptionsFlow):
                 "bonus",
                 "rewards",
                 "settings",
+                "bedtime",
                 "notifications",
                 "finish",
             ],
@@ -211,6 +217,49 @@ class ChoresOptionsFlow(OptionsFlow):
                     ),
                 }
             ),
+        )
+
+    async def async_step_bedtime(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        opts = self._load()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            lead = int(user_input[CONF_BEDTIME_LEAD])
+            times: dict[str, str] = {}
+            for key in (CONF_BEDTIME, CONF_BEDTIME_WEEKEND):
+                value = dt_util.parse_time(user_input.get(key) or "")
+                times[key] = value.strftime("%H:%M") if value else ""
+                # the reminder must fall on the same evening as the bedtime
+                if value and value.hour * 60 + value.minute < lead:
+                    errors[CONF_BEDTIME_LEAD] = "lead_too_long"
+            if not errors:
+                opts.update(times)
+                opts[CONF_BEDTIME_LEAD] = lead
+                self._save()
+                return await self.async_step_init()
+        return self.async_show_form(
+            step_id="bedtime",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(
+                        CONF_BEDTIME,
+                        description={"suggested_value": opts[CONF_BEDTIME] or None},
+                    ): TimeSelector(),
+                    vol.Optional(
+                        CONF_BEDTIME_WEEKEND,
+                        description={"suggested_value": opts[CONF_BEDTIME_WEEKEND] or None},
+                    ): TimeSelector(),
+                    vol.Required(
+                        CONF_BEDTIME_LEAD, default=opts[CONF_BEDTIME_LEAD]
+                    ): NumberSelector(
+                        NumberSelectorConfig(
+                            min=5, max=240, step=5, mode=NumberSelectorMode.BOX
+                        )
+                    ),
+                }
+            ),
+            errors=errors,
         )
 
     async def async_step_notifications(

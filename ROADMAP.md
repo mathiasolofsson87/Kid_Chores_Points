@@ -20,11 +20,11 @@ Suggested order: 1 + 2, then 3, then 13, then 5 and 6.
 - [ ] 9. **Wallet payout request.** Child taps "request payout", the parent gets an actionable notification, and confirming runs the `adjust_wallet` deduction.
 - [ ] 10. **Weekly summary to parents** with per-chore completion counts, not just the points result.
 - [ ] 15. **Reward entity picker.** Let each reward optionally link to an entity (e.g. a smart outlet). Example: "15 min more Xbox time" → `switch.xbox_outlet`. Redeeming the reward should turn the entity on automatically for the reward's duration, then off again. *(Added 2026-10-21.)*
-- [ ] 16. **Bedtime reminder.** Let the parent set the child's bedtime (possibly different on school nights and weekends) and a lead time, e.g. 45 minutes. That long before bedtime, the child's device gets a notification if any mandatory chores are still open that day, listing what's left. Nothing is sent when all are done. *(Added 2026-10-21.)*
+- [x] 16. **Bedtime reminder.** (done: Configure → Bedtime reminder) Let the parent set the child's bedtime (possibly different on school nights and weekends) and a lead time, e.g. 45 minutes. That long before bedtime, the child's device gets a notification if any mandatory chores are still open that day, listing what's left. Nothing is sent when all are done. *(Added 2026-10-21.)*
 
 ## Robustness and polish
 
 - [x] 11. **History cap.** (done: configurable 50–1000 under Goal, policy & currency; no export or long-term statistics) 300 entries is only a few weeks. Make it configurable, or add long-term statistics or an export.
 - [x] 12. **Match chores by Maintenance Supporter task ID** (done: chores picked from the task list are linked by ID; hand-typed or older chores still match by name), with the name as a fallback, so renaming a task doesn't break matching.
 - [x] 13. **Edge cases.** (done: missed week close is caught up on start, huge `units` are covered by a test) Catch up a missed 23:59 week close on startup (HA down at the time); check `redeem` with large `units` when the bank can't cover it.
-- [ ] 14. **Split `www/kid-chores-cards.js`** (about 1,460 lines) into per-card modules with a small build step.
+- [x] 14. **Split `www/kid-chores-cards.js`** (done: modules in `frontend/src`, esbuild bundle, jsdom tests, CI check) (about 1,460 lines) into per-card modules with a small build step.

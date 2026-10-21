@@ -1,0 +1,14 @@
+{
+  "name": "kid-chores-points-cards",
+  "private": true,
+  "description": "Build and tests for the dashboard cards of the Kid Chores & Points integration",
+  "type": "module",
+  "scripts": {
+    "build": "node frontend/build.mjs",
+    "test": "node --test frontend/test/"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.10",
+    "jsdom": "26.1.0"
+  }
+}

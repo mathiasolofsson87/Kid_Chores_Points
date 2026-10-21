@@ -12,6 +12,7 @@ A Home Assistant integration that turns chore completions into points, a weekly 
    - **Bonus chores** – pick a task + points. Only paid once all mandatory chores are done that day; earlier completions are held as *pending* and paid out when the last mandatory chore is done. Pending points are dropped at midnight. Unlike mandatory chores, a bonus chore pays every time it is completed. Bonus points are collected separately from the weekly goal and are only banked if the goal is met (see below).
    - **Rewards** – name per unit (e.g. `15 min Xbox`) + point cost. Optionally set **Pays into the wallet** to turn a reward into a cash-out (see [Wallet](#wallet)).
    - **Goal, policy & currency** – first day of the week, weekly goal, extra bank points when reached, what happens if the goal is missed (bank all / bank half / forfeit), and the wallet currency label (default `kr`).
+   - **Bedtime reminder** – the child's bedtime (school nights, and optionally a different one for the weekend, meaning Fridays and Saturdays) and how many minutes before it to remind. See [Bedtime reminder](#bedtime-reminder).
    - **Notifications** – pick the child and parents as Home Assistant **persons**; their Companion-app phones are found automatically. Extra `notify` services (tablet, group) can be added too.
 
 In the chores and rewards lists, **Add**, **Edit** and **Remove** are separate menu entries. **Edit** opens a form with the current values (name, points and, for rewards, the payout); changing the name renames the item and keeps its place. Adding a name that already exists is refused – use Edit instead.
@@ -50,6 +51,12 @@ Example with goal 50, goal bonus 10 and 12 bonus points earned:
 | 40 | No | **40** (bank all) / **20** (bank half) / **0** (forfeit) – the 12 bonus points are lost |
 
 Child and parents are notified when the week closes, including how many bonus points were banked or lost, and the result is kept in the *last week result* sensor. Bonus points collected before updating to this behaviour stay in that week's mandatory total.
+
+## Bedtime reminder
+
+Under Configure → *Bedtime reminder*, set the **School nights** bedtime and how many minutes before it the reminder should go out (default 45, adjustable from 5 to 240). At that time, if any mandatory chores are still open, the child's phone (and any extra child `notify` services) gets a notification listing what's left, e.g. *"Almost bedtime 🌙 – 2 chores left today: • Dishes (+20 p) • Trash (+30 p)"*, or *"Just one left: Trash (+30 p)"* when only one is open. Nothing is sent when all mandatory chores are done, and at most one reminder goes out per day.
+
+An optional **Weekend** bedtime applies on Fridays and Saturdays, the nights before a day off; leave it empty to use the school-night bedtime every night. Clear both times to turn the reminder off. The reminder has to fall on the same evening as the bedtime, so a bedtime just after midnight with a long lead time is refused. The child needs a **person** set under Notifications (or an extra child `notify` service) to receive it.
 
 ## Undo
 
@@ -168,6 +175,18 @@ A parent tool in one card: choose **Bank**, **This week** (the mandatory points 
 ### History card
 
 A parent timeline of every change, newest first and grouped by day: completed chores, bonus chores (including ones held as pending and later released), redeemed rewards and cash-outs (with the money received), manual adjustments of points and the wallet with their reason, and week closes. Each entry shows the amount, the reason/label and (optionally) the week (with bonus), bank and wallet balance afterwards. Undone changes appear as *Undone* entries, and the card shows an *Undo* button for the latest change. The number of changes kept is set in Configure (default 300). Options (YAML): `limit` (entries per page, default 30), `show_balances: false` to hide the balances, `title`, `device`. The data is also available as the `history` attribute of the *Points history* sensor.
+
+## Development
+
+The dashboard cards are written as modules in `frontend/src` and bundled into the single file the integration serves, `custom_components/kid_chores_points/www/kid-chores-cards.js`. **Edit the sources, not the built file**, then rebuild and commit both:
+
+```
+npm install
+npm run build   # bundles frontend/src into the served file
+npm test        # card tests (jsdom)
+```
+
+Python tests: see `requirements_test.txt` and run `pytest`. CI fails if the built card file doesn't match `frontend/src`.
 
 ## Maintenance Supporter labels
 

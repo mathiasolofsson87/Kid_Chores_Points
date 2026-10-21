@@ -23,6 +23,7 @@
           "bonus": "Bonussysslor",
           "rewards": "Belöningar",
           "settings": "Mål, regel & valuta",
+          "bedtime": "Läggdagspåminnelse",
           "notifications": "Notiser",
           "finish": "Klar"
         }
@@ -177,10 +178,25 @@
           "points": "Poäng"
         },
         "description": "Ändra poängen, eller välj en annan uppgift / skriv ett annat namn för att döpa om sysslan. En syssla som valts i listan förblir kopplad till sin uppgift, så att döpa om uppgiften i Maintenance Supporter förstör inget. Ett namn du skriver matchar bara på uppgiftens namn."
+      },
+      "bedtime": {
+        "title": "Läggdagspåminnelse",
+        "description": "Ange barnets läggdags för att skicka en påminnelse till barnets enhet om obligatoriska sysslor fortfarande är kvar. Lämna båda tiderna tomma för ingen påminnelse. Notisen går till barnets telefon och extra notify-tjänster (se Notiser).",
+        "data": {
+          "bedtime": "Skolkvällar",
+          "bedtime_weekend": "Helg",
+          "bedtime_lead": "Påminn så här många minuter före läggdags"
+        },
+        "data_description": {
+          "bedtime": "Läggdags på skolkvällar. Påminnelsen skickas bara om någon obligatorisk syssla inte är klar än.",
+          "bedtime_weekend": "Läggdags på fredagar och lördagar. Valfritt; lämna tomt för att använda läggdags för skolkvällar varje kväll.",
+          "bedtime_lead": "Minuter före läggdags, 5–240."
+        }
       }
     },
     "error": {
-      "name_exists": "Det finns redan ett objekt med det här namnet. Använd Redigera för att ändra det."
+      "name_exists": "Det finns redan ett objekt med det här namnet. Använd Redigera för att ändra det.",
+      "lead_too_long": "Påminnelsen skulle hamna före midnatt. Välj en kortare tid eller senare läggdags."
     }
   },
   "selector": {

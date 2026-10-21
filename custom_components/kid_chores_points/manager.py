@@ -6,7 +6,7 @@ import asyncio
 import copy
 import logging
 import uuid
-from datetime import date, timedelta
+from datetime import date, time, timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -20,6 +20,9 @@ from homeassistant.util import dt as dt_util, slugify
 
 from .messages import translate
 from .const import (
+    CONF_BEDTIME,
+    CONF_BEDTIME_LEAD,
+    CONF_BEDTIME_WEEKEND,
     CONF_BONUS,
     CONF_CHORE_IDS,
     CONF_GOAL,
@@ -43,6 +46,7 @@ from .const import (
     POLICY_HALF,
     SIGNAL_UPDATE,
     WEEK_DAYS,
+    WEEKEND_NIGHTS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -120,6 +124,7 @@ class ChoresManager:
             "reward_log": [],
             "history": [],
             "undo": [],  # snapshots taken before each change, newest last
+            "bedtime_sent": "",  # date of the last bedtime reminder
             **stored,
         }
         # Baseline for the missed-week-close catch-up: without it an upgrade (or a
@@ -253,6 +258,10 @@ class ChoresManager:
         self.entry.async_on_unload(
             async_track_time_change(self.hass, self._on_week_end, 23, 59, 0)
         )
+        if self.opt(CONF_BEDTIME) or self.opt(CONF_BEDTIME_WEEKEND):
+            self.entry.async_on_unload(
+                async_track_time_change(self.hass, self._on_minute, second=0)
+            )
 
     async def async_stop(self) -> None:
         await self._store.async_save(self.data)
@@ -303,6 +312,41 @@ class ChoresManager:
         today = dt_util.as_local(now).date()
         if today.weekday() == (start - 1) % 7 and self.data["last_close"] != today.isoformat():
             await self.async_close_week(today)
+
+    def bedtime_reminder_time(self, day: date) -> time | None:
+        """When the bedtime reminder goes out on `day`, or None if there is none."""
+        weekend = self.opt(CONF_BEDTIME_WEEKEND) if day.weekday() in WEEKEND_NIGHTS else ""
+        bedtime = dt_util.parse_time(weekend or self.opt(CONF_BEDTIME) or "")
+        if bedtime is None:
+            return None
+        minutes = bedtime.hour * 60 + bedtime.minute - int(self.opt(CONF_BEDTIME_LEAD))
+        if minutes < 0:  # would be the evening before; the options flow refuses this
+            return None
+        return time(minutes // 60, minutes % 60)
+
+    async def _on_minute(self, now: Any) -> None:
+        now = dt_util.as_local(now)
+        at = self.bedtime_reminder_time(now.date())
+        if at is not None and (now.hour, now.minute) == (at.hour, at.minute):
+            await self.async_bedtime_reminder()
+
+    async def async_bedtime_reminder(self) -> None:
+        """Tell the child which mandatory chores are still open (once per day)."""
+        async with self._lock:
+            today = dt_util.now().date().isoformat()
+            remaining = self.mandatory_remaining()
+            if self.data["bedtime_sent"] == today or not remaining:
+                return
+            self.data["bedtime_sent"] = today
+            self._store.async_delay_save(lambda: self.data, 1)
+        items = [f"{name} (+{self.mandatory[name]} p)" for name in remaining]
+        if len(items) == 1:
+            message = self.tr("bedtime_one", left=items[0])
+        else:
+            message = self.tr(
+                "bedtime_many", n=len(items), left="\n".join(f"• {i}" for i in items)
+            )
+        await self._notify(CONF_NOTIFY_KID, self.tr("bedtime_title"), message)
 
     async def async_catch_up(self) -> None:
         """Close a week whose 23:59 close was missed (Home Assistant was down)."""
