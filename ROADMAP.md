@@ -9,7 +9,7 @@ Suggested order: 1 + 2, then 3, then 13, then 5 and 6.
 - [x] 1. **Tests.** (done: 47 tests in `tests/`; run with `.venv/bin/python -m pytest`, setup: `uv venv --python 3.13 .venv && uv pip install --python .venv/bin/python -r requirements_test.txt`) Add `tests/` with pytest and `pytest-homeassistant-custom-component`. Cover week close, bonus banking, the missed-goal policies (all / half / forfeit), wallet floor at 0 and pending bonus dropped at midnight.
 - [x] 2. **CI.** (done: `.github/workflows/validate.yml`, needs a first run on GitHub to confirm) GitHub Actions with hassfest, HACS validation and pytest.
 - [x] 3. **Swedish config flow.** (done: `translations/sv.json`) Add `translations/sv.json`; only `en.json` exists, so the config and options flow is English-only.
-- [ ] 4. **Releases and changelog.** (`CHANGELOG.md` is written; the GitHub releases are still to be created from the tags) Tagged GitHub releases with short notes, so HACS users see what changed.
+- [x] 4. **Releases and changelog.** (done: `CHANGELOG.md`, and every tag has a GitHub release with notes) Tagged GitHub releases with short notes, so HACS users see what changed.
 
 ## Features
 
