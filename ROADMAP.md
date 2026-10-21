@@ -19,6 +19,7 @@ Suggested order: 1 + 2, then 3, then 13, then 5 and 6.
 - [ ] 8. **Per-chore schedules.** Chores that only count on certain weekdays; different goals for school weeks and holidays.
 - [ ] 9. **Wallet payout request.** Child taps "request payout", the parent gets an actionable notification, and confirming runs the `adjust_wallet` deduction.
 - [ ] 10. **Weekly summary to parents** with per-chore completion counts, not just the points result.
+- [ ] 15. **Reward entity picker.** Let each reward optionally link to an entity (e.g. a smart outlet). Example: "15 min more Xbox time" → `switch.xbox_outlet`. Redeeming the reward should turn the entity on automatically for the reward's duration, then off again. *(Added 2026-10-21; a session-start reminder in `.claude/settings.json` points at this - remove it once done.)*
 
 ## Robustness and polish
 

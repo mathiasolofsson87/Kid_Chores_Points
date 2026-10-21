@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"systemMessage\":\"Reminder: feature idea pending - Reward entity picker (link a reward to an entity such as switch.xbox_outlet; redeeming turns it on for the reward duration, then off). See ROADMAP.md item 15.\",\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"The user wants to be reminded about the pending feature idea in ROADMAP.md item 15 (Reward entity picker). Mention it briefly at the start of the session and offer to implement it.\"}}'"
+          }
+        ]
+      }
+    ]
+  }
+}
