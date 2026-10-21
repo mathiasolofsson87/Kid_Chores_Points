@@ -2,6 +2,14 @@
 
 All notable changes to Kid Chores & Points. Versions match the git tags and the GitHub releases.
 
+## 1.6.0 – 2026-10-21
+
+### Added
+- **Bedtime reminder.** Set the child's bedtime for school nights (optionally a different one for the weekend, i.e. Fridays and Saturdays) and a lead time under *Configure → Bedtime reminder*. That long before bedtime (5–240 minutes, default 45) the child's device gets a notification such as "2 chores left today: • Dishes (+20 p) • Trash (+30 p)", or "Just one left: Trash (+30 p)". Nothing is sent when all mandatory chores are done, and never more than once a day. English and Swedish.
+
+### Changed
+- The dashboard cards are now built from modules in `frontend/src` (esbuild) into the same single served file. Card names and options are unchanged, so dashboards need no changes. Added tests for the cards (jsdom) and a CI check that the built file is current.
+
 ## 1.5.0 – 2026-10-21
 
 ### Added
