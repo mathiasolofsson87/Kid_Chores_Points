@@ -8,7 +8,7 @@ A Home Assistant integration that turns chore completions into points, a weekly 
 2. Install **Kid Chores & Points**, restart Home Assistant.
 3. **Settings → Devices & services → Add integration → Kid Chores & Points**. Give it a name (one per child).
 4. Click **Configure** on the integration to set up everything in the UI:
-   - **Mandatory chores** – pick a task from the Maintenance Supporter list (free-text names also work) + points. Matching is by task name, so if you rename a task in Maintenance Supporter, use **Edit a chore** and pick the new name. Counted once per day.
+   - **Mandatory chores** – pick a task from the Maintenance Supporter list (free-text names also work) + points. A chore picked from the list is linked to the task's ID, so renaming the task in Maintenance Supporter doesn't break it (the chore keeps its name here). A chore typed by hand, or added before v1.5, matches on the task name instead; open **Edit a chore** and re-pick the task from the list to link it. Counted once per day.
    - **Bonus chores** – pick a task + points. Only paid once all mandatory chores are done that day; earlier completions are held as *pending* and paid out when the last mandatory chore is done. Pending points are dropped at midnight. Unlike mandatory chores, a bonus chore pays every time it is completed. Bonus points are collected separately from the weekly goal and are only banked if the goal is met (see below).
    - **Rewards** – name per unit (e.g. `15 min Xbox`) + point cost. Optionally set **Pays into the wallet** to turn a reward into a cash-out (see [Wallet](#wallet)).
    - **Goal, policy & currency** – first day of the week, weekly goal, extra bank points when reached, what happens if the goal is missed (bank all / bank half / forfeit), and the wallet currency label (default `kr`).
@@ -24,10 +24,10 @@ If the child **person** (Configure → Notifications) has a linked Home Assistan
 
 ## How it works
 
-- Listens for `maintenance_supporter_task_completed` (uses `task_name`).
+- Listens for `maintenance_supporter_task_completed` (matches the chore by `task_id` when it is linked to a task, otherwise by `task_name`).
 - At 23:59 on the day before your configured first day of the week (default: Monday, so Sunday night) the week closes: points move to the bank per the policy and the week counter resets.
 - Redeeming a reward deducts its points from the bank. A normal reward adds an item to the **Redeemed rewards** to-do list for a parent to hand out; a cash-out reward adds money to the wallet instead.
-- Every change to points or the wallet is kept in the history (the last 300 changes).
+- Every change to points or the wallet is kept in the history (the last 300 changes by default; change it under **Configure → Goal, policy & currency → History length**, 50–1000).
 
 ## Weekly goal, bonus and the bank
 
@@ -50,6 +50,10 @@ Example with goal 50, goal bonus 10 and 12 bonus points earned:
 | 40 | No | **40** (bank all) / **20** (bank half) / **0** (forfeit) – the 12 bonus points are lost |
 
 Child and parents are notified when the week closes, including how many bonus points were banked or lost, and the result is kept in the *last week result* sensor. Bonus points collected before updating to this behaviour stay in that week's mandatory total.
+
+## Undo
+
+Tapped the wrong chore or redeemed the wrong reward? The **History card** shows an *Undo* button for the latest change, and the `undo` service does the same. It reverts a completed chore (including any held bonus points it released), a redemption or cash-out (points back to the bank, the reward removed from the *Redeemed rewards* list, the money taken back from the wallet) or a manual adjustment. It can be repeated to step back through the last 10 changes. Closing the week clears the list, since a closed week can't be reopened. Each undo is added to the history and logbook and the parents get a notification.
 
 ## Wallet
 
@@ -86,6 +90,7 @@ Notifications, logbook entries and the "last week result" text use the Home Assi
 | `kid_chores_points.adjust_points` | `target` (week/bank), `points` (±), `reason` |
 | `kid_chores_points.adjust_wallet` | `amount` (±, whole numbers), `reason` |
 | `kid_chores_points.close_week` | Close the week now |
+| `kid_chores_points.undo` | Undo the latest completed chore, redemption or adjustment (see [Undo](#undo)) |
 
 With more than one tracker, pass `config_entry` to pick which one.
 
@@ -162,11 +167,11 @@ A parent tool in one card: choose **Bank**, **This week** (the mandatory points 
 
 ### History card
 
-A parent timeline of every change, newest first and grouped by day: completed chores, bonus chores (including ones held as pending and later released), redeemed rewards and cash-outs (with the money received), manual adjustments of points and the wallet with their reason, and week closes. Each entry shows the amount, the reason/label and (optionally) the week (with bonus), bank and wallet balance afterwards. The last 300 changes are kept. Options (YAML): `limit` (entries per page, default 30), `show_balances: false` to hide the balances, `title`, `device`. The data is also available as the `history` attribute of the *Points history* sensor.
+A parent timeline of every change, newest first and grouped by day: completed chores, bonus chores (including ones held as pending and later released), redeemed rewards and cash-outs (with the money received), manual adjustments of points and the wallet with their reason, and week closes. Each entry shows the amount, the reason/label and (optionally) the week (with bonus), bank and wallet balance afterwards. Undone changes appear as *Undone* entries, and the card shows an *Undo* button for the latest change. The number of changes kept is set in Configure (default 300). Options (YAML): `limit` (entries per page, default 30), `show_balances: false` to hide the balances, `title`, `device`. The data is also available as the `history` attribute of the *Points history* sensor.
 
 ## Maintenance Supporter labels
 
-Points are awarded by task name, so any configured chore counts when completed. The *Chores to do* and *Bonus chores* cards, however, only show Maintenance Supporter tasks (and their **Done** buttons) that match a **label**: give your mandatory tasks the label `mandatory` and your bonus tasks the label `bonus` in Maintenance Supporter, or change `filter_labels` on the cards. Without a matching label a task isn't listed by the card (a configured chore that has no Maintenance Supporter task is still shown).
+Points are awarded by task (its ID, or its name for chores that aren't linked), so any configured chore counts when completed. The *Chores to do* and *Bonus chores* cards, however, only show Maintenance Supporter tasks (and their **Done** buttons) that match a **label**: give your mandatory tasks the label `mandatory` and your bonus tasks the label `bonus` in Maintenance Supporter, or change `filter_labels` on the cards. Without a matching label a task isn't listed by the card (a configured chore that has no Maintenance Supporter task is still shown).
 
 ## Example dashboard
 

@@ -1,0 +1,300 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Kid Chores & Points",
+        "description": "Skapa en poängräknare (en per barn). Sysslor, belöningar och veckomålet ställs in efteråt via **Konfigurera** på integrationen.",
+        "data": {
+          "name": "Namn"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "En räknare med det här namnet finns redan."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Sysslor & poäng",
+        "description": "Ändringar sparas direkt. Välj **Klar** när du är färdig.",
+        "menu_options": {
+          "mandatory": "Obligatoriska sysslor",
+          "bonus": "Bonussysslor",
+          "rewards": "Belöningar",
+          "settings": "Mål, regel & valuta",
+          "notifications": "Notiser",
+          "finish": "Klar"
+        }
+      },
+      "settings": {
+        "title": "Mål, regel & valuta",
+        "data": {
+          "weekly_goal": "Veckomål (poäng)",
+          "goal_bonus": "Målbonus (extra poäng när målet nås)",
+          "missed_goal_policy": "Om veckomålet inte nås",
+          "week_start": "Veckans första dag",
+          "currency": "Plånbokens valuta",
+          "history_limit": "Historikens längd (poster)"
+        },
+        "description": "Veckan stängs 23:59 dagen före veckans första dag. Då flyttas veckans poäng till banken, beroende på om målet nåddes.",
+        "data_description": {
+          "week_start": "Veckan stängs 23:59 dagen före den här dagen (måndag = stängs söndag kväll).",
+          "weekly_goal": "Obligatoriska poäng som krävs under en vecka för att nå målet (bonuspoäng räknas inte). Målet är nått när veckans poäng ≥ målet.",
+          "goal_bonus": "Ett fast extrabelopp som läggs i banken när veckan stängs med målet nått, utöver intjänade poäng och veckans bonuspoäng. Exempel: mål 50, bonus 10, intjänat 55 → 65 går till banken (plus eventuella bonussysslepoäng). Ange 0 för ingen bonus. Betalas aldrig ut om målet missas.",
+          "missed_goal_policy": "Vad som sätts in i banken om målet INTE nås: alla veckans obligatoriska poäng, hälften av dem (avrundat nedåt) eller inga. Ingen målbonus betalas ut och veckans bonuspoäng går förlorade oavsett val.",
+          "currency": "Visas efter plånboksbelopp, t.ex. kr. Bara en etikett – ingen omräkning.",
+          "history_limit": "Hur många ändringar som sparas i poänghistoriken (Historik-kortet och sensorn Poänghistorik). När gränsen nås tas de äldsta posterna bort. Om du sänker värdet beskärs historiken vid nästa ändring. Mellan 50 och 1000."
+        }
+      },
+      "notifications": {
+        "title": "Notiser",
+        "description": "Välj **personen** för barnet och för föräldrarna; deras telefoner (Home Assistant Companion-appen) hittas automatiskt. Fälten för `notify`-tjänster nedan är valfria extra mottagare (t.ex. en surfplatta eller grupp). Barnets person används också för att avgöra vems slutförda sysslor som räknas: om barnet har en kopplad Home Assistant-användare ignoreras slutföranden av andra användare (slutföranden utan användare räknas fortfarande).",
+        "data": {
+          "kid_persons": "Barn (person)",
+          "parent_persons": "Föräldrar (personer)",
+          "notify_kid": "Extra notify-tjänster för barnet",
+          "notify_parents": "Extra notify-tjänster för föräldrarna"
+        }
+      },
+      "mandatory": {
+        "title": "Obligatoriska sysslor",
+        "description": "Välj bland dina Maintenance Supporter-uppgifter. Varje syssla ger poäng en gång per dag, och bonussysslorna låses upp när alla är klara.\n\n{items}\n\nFör att visa sysslorna i instrumentpanelens Maintenance Supporter-lista, ge varje uppgift etiketten `mandatory` i Maintenance Supporter.",
+        "menu_options": {
+          "mandatory_add": "Lägg till en syssla",
+          "mandatory_edit": "Redigera en syssla",
+          "mandatory_remove": "Ta bort sysslor",
+          "init": "Tillbaka"
+        }
+      },
+      "mandatory_add": {
+        "title": "Lägg till obligatorisk syssla",
+        "data": {
+          "name": "Maintenance Supporter-uppgift",
+          "points": "Poäng"
+        },
+        "description": "Välj en uppgift från Maintenance Supporter (eller skriv ett namn – då matchas det på uppgiftens namn). Kom ihåg att ge uppgiften etiketten `mandatory` i Maintenance Supporter om du vill ha den i instrumentpanelens lista. För att ändra en befintlig syssla, använd Redigera en syssla."
+      },
+      "mandatory_remove": {
+        "title": "Ta bort obligatoriska sysslor",
+        "data": {
+          "names": "Sysslor att ta bort"
+        }
+      },
+      "bonus": {
+        "title": "Bonussysslor",
+        "description": "Betalas bara ut när alla obligatoriska sysslor är klara samma dag (hålls väntande tills dess). Bonuspoäng samlas separat från veckomålet och sätts bara in i banken om målet nås.\n\n{items}\n\nFör att visa sysslorna i instrumentpanelens Maintenance Supporter-lista, ge varje uppgift etiketten `bonus` i Maintenance Supporter.",
+        "menu_options": {
+          "bonus_add": "Lägg till en syssla",
+          "bonus_edit": "Redigera en syssla",
+          "bonus_remove": "Ta bort sysslor",
+          "init": "Tillbaka"
+        }
+      },
+      "bonus_add": {
+        "title": "Lägg till bonussyssla",
+        "data": {
+          "name": "Maintenance Supporter-uppgift",
+          "points": "Poäng"
+        },
+        "description": "Välj en uppgift från Maintenance Supporter (eller skriv ett namn – då matchas det på uppgiftens namn). Kom ihåg att ge uppgiften etiketten `bonus` i Maintenance Supporter om du vill ha den i instrumentpanelens lista. För att ändra en befintlig syssla, använd Redigera en syssla."
+      },
+      "bonus_remove": {
+        "title": "Ta bort bonussysslor",
+        "data": {
+          "names": "Sysslor att ta bort"
+        }
+      },
+      "rewards": {
+        "title": "Belöningar",
+        "description": "Namnge belöningen för EN enhet (t.ex. `15 min Xbox`) och dess pris i poäng. En belöning kan också sätta in pengar i barnets plånbok i stället för att delas ut.\n\n{items}",
+        "menu_options": {
+          "rewards_add": "Lägg till en belöning",
+          "rewards_edit": "Redigera en belöning",
+          "rewards_remove": "Ta bort belöningar",
+          "init": "Tillbaka"
+        }
+      },
+      "rewards_add": {
+        "title": "Lägg till belöning",
+        "data": {
+          "name": "Belöning (per enhet)",
+          "points": "Pris i poäng",
+          "payout": "Sätts in i plånboken (per enhet)"
+        },
+        "data_description": {
+          "payout": "Lämna på 0 för en vanlig belöning. Ange t.ex. 5 för att göra den till en utväxling: varje enhet kostar poängen ovan och lägger till så här mycket ({currency}) i plånboken. Exempel: 10 poäng → 5 {currency}."
+        }
+      },
+      "rewards_remove": {
+        "title": "Ta bort belöningar",
+        "data": {
+          "names": "Belöningar att ta bort"
+        }
+      },
+      "rewards_edit": {
+        "title": "Redigera belöning",
+        "data": {
+          "name": "Belöning att redigera"
+        }
+      },
+      "rewards_edit_item": {
+        "title": "Redigera belöning",
+        "data": {
+          "name": "Belöning (per enhet)",
+          "points": "Pris i poäng",
+          "payout": "Sätts in i plånboken (per enhet)"
+        },
+        "data_description": {
+          "name": "Ändra namnet för att döpa om belöningen.",
+          "payout": "0 = en vanlig belöning som delas ut. Över 0 = en utväxling: varje enhet kostar poängen ovan och lägger till så här mycket ({currency}) i plånboken."
+        }
+      },
+      "mandatory_edit": {
+        "title": "Redigera obligatorisk syssla",
+        "data": {
+          "name": "Syssla att redigera"
+        }
+      },
+      "mandatory_edit_item": {
+        "title": "Redigera obligatorisk syssla",
+        "data": {
+          "name": "Maintenance Supporter-uppgift",
+          "points": "Poäng"
+        },
+        "description": "Ändra poängen, eller välj en annan uppgift / skriv ett annat namn för att döpa om sysslan. En syssla som valts i listan förblir kopplad till sin uppgift, så att döpa om uppgiften i Maintenance Supporter förstör inget. Ett namn du skriver matchar bara på uppgiftens namn."
+      },
+      "bonus_edit": {
+        "title": "Redigera bonussyssla",
+        "data": {
+          "name": "Syssla att redigera"
+        }
+      },
+      "bonus_edit_item": {
+        "title": "Redigera bonussyssla",
+        "data": {
+          "name": "Maintenance Supporter-uppgift",
+          "points": "Poäng"
+        },
+        "description": "Ändra poängen, eller välj en annan uppgift / skriv ett annat namn för att döpa om sysslan. En syssla som valts i listan förblir kopplad till sin uppgift, så att döpa om uppgiften i Maintenance Supporter förstör inget. Ett namn du skriver matchar bara på uppgiftens namn."
+      }
+    },
+    "error": {
+      "name_exists": "Det finns redan ett objekt med det här namnet. Använd Redigera för att ändra det."
+    }
+  },
+  "selector": {
+    "missed_goal_policy": {
+      "options": {
+        "bank_anyway": "Sätt in alla poäng ändå",
+        "bank_half": "Sätt in hälften",
+        "forfeit": "Förverka poängen"
+      }
+    },
+    "week_start": {
+      "options": {
+        "mon": "Måndag",
+        "tue": "Tisdag",
+        "wed": "Onsdag",
+        "thu": "Torsdag",
+        "fri": "Fredag",
+        "sat": "Lördag",
+        "sun": "Söndag"
+      }
+    }
+  },
+  "services": {
+    "complete_chore": {
+      "name": "Slutför syssla",
+      "description": "Registrera en syssla som klar (samma sak som ett slutförande i Maintenance Supporter).",
+      "fields": {
+        "name": {
+          "name": "Syssla",
+          "description": "Sysslans namn."
+        },
+        "config_entry": {
+          "name": "Räknare",
+          "description": "Config entry-ID (behövs bara med flera räknare)."
+        }
+      }
+    },
+    "redeem": {
+      "name": "Lös in belöning",
+      "description": "Byt bankpoäng mot en belöning.",
+      "fields": {
+        "reward": {
+          "name": "Belöning",
+          "description": "Belöningens namn som det är inställt."
+        },
+        "units": {
+          "name": "Antal",
+          "description": "Hur många enheter."
+        },
+        "config_entry": {
+          "name": "Räknare",
+          "description": "Config entry-ID (behövs bara med flera räknare)."
+        }
+      }
+    },
+    "adjust_points": {
+      "name": "Justera poäng",
+      "description": "Lägg till eller dra av poäng manuellt.",
+      "fields": {
+        "target": {
+          "name": "Räknare",
+          "description": "week (obligatoriska poäng som räknas mot målet) eller bank."
+        },
+        "points": {
+          "name": "Poäng",
+          "description": "Positivt eller negativt."
+        },
+        "reason": {
+          "name": "Anledning",
+          "description": "Visas i loggboken."
+        },
+        "config_entry": {
+          "name": "Räknare",
+          "description": "Config entry-ID (behövs bara med flera räknare)."
+        }
+      }
+    },
+    "close_week": {
+      "name": "Stäng veckan",
+      "description": "Stäng veckan nu (körs normalt 23:59 på veckans sista dag).",
+      "fields": {
+        "config_entry": {
+          "name": "Räknare",
+          "description": "Config entry-ID (behövs bara med flera räknare)."
+        }
+      }
+    },
+    "adjust_wallet": {
+      "name": "Justera plånboken",
+      "description": "Sätt in pengar i eller dra av pengar från plånboken.",
+      "fields": {
+        "amount": {
+          "name": "Belopp",
+          "description": "Positivt för att lägga till, negativt för att dra av (heltal)."
+        },
+        "reason": {
+          "name": "Anledning",
+          "description": "Visas i loggboken och historiken."
+        },
+        "config_entry": {
+          "name": "Räknare",
+          "description": "Config entry-ID (behövs bara med flera räknare)."
+        }
+      }
+    },
+    "undo": {
+      "name": "Ångra senaste",
+      "description": "Ångra den senaste ändringen av poäng eller plånbok (slutförd syssla, inlösen eller justering). Kan upprepas för att ångra flera steg bakåt, men inte över en veckostängning.",
+      "fields": {
+        "config_entry": {
+          "name": "Räknare",
+          "description": "Config entry-ID (behövs bara med flera räknare)."
+        }
+      }
+    }
+  }
+}

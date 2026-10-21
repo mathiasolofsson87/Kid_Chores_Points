@@ -71,3 +71,9 @@ close_week:
       selector:
         config_entry:
           integration: kid_chores_points
+undo:
+  fields:
+    config_entry:
+      selector:
+        config_entry:
+          integration: kid_chores_points

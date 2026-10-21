@@ -113,6 +113,7 @@ SENSORS: tuple[ChoresSensorDescription, ...] = (
             "done": m.today["mandatory_done"],
             "bonus_chores": m.bonus,
             "mandatory_chores": m.mandatory,
+            "chore_ids": m.chore_ids,
         },
     ),
     ChoresSensorDescription(
@@ -127,7 +128,10 @@ SENSORS: tuple[ChoresSensorDescription, ...] = (
         name="Points history",
         icon="mdi:timeline-clock",
         value_fn=lambda m: len(m.history),
-        attrs_fn=lambda m: {"history": list(reversed(m.history))},
+        attrs_fn=lambda m: {
+            "history": list(reversed(m.history)),
+            "undo_label": m.undo_label,
+        },
     ),
     ChoresSensorDescription(
         key="last_week_result",

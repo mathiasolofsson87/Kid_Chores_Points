@@ -38,6 +38,10 @@ MESSAGES: dict[str, dict[str, str]] = {
         "bonus_lost": "{bonus} bonus points were not banked because the goal was missed.",
         "goal_met": "goal met",
         "goal_missed": "goal missed",
+        "adjust_undo_label": "adjustment",
+        "undo_log": "undid: {label}",
+        "undo_parents_title": "Change undone ↩️",
+        "undo_parents": "Undid: {label}. Bank balance is now {bank} points.",
     },
     "sv": {
         "mandatory_done_title": "Dagens uppgifter klara! ⭐",
@@ -74,6 +78,10 @@ MESSAGES: dict[str, dict[str, str]] = {
         "bonus_lost": "{bonus} bonuspoäng sattes inte in eftersom målet inte nåddes.",
         "goal_met": "mål nått",
         "goal_missed": "mål ej nått",
+        "adjust_undo_label": "justering",
+        "undo_log": "ångrade: {label}",
+        "undo_parents_title": "Ändring ångrad ↩️",
+        "undo_parents": "Ångrade: {label}. Banksaldot är nu {bank} poäng.",
     },
 }
 

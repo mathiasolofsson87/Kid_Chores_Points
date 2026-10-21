@@ -278,6 +278,25 @@ async def test_history_is_capped(make_manager):
     assert m.bank == HISTORY_LIMIT + 25
 
 
+async def test_history_cap_follows_the_option(make_manager):
+    m = await make_manager(history_limit=60)
+    for _ in range(80):
+        await m.async_adjust("bank", 1, "x")
+    assert len(m.history) == 60
+
+
+async def test_lowering_the_history_cap_trims_at_the_next_change(hass, make_manager):
+    m = await make_manager(history_limit=100)
+    for _ in range(100):
+        await m.async_adjust("bank", 1, "x")
+    hass.config_entries.async_update_entry(
+        m.entry, options={**m.entry.options, "history_limit": 50}
+    )
+    await m.async_adjust("bank", 1, "x")
+    assert len(m.history) == 50
+    assert m.history[-1]["bank"] == 101  # the newest entries are the ones kept
+
+
 async def test_history_snapshots_balances(make_manager):
     m = await make_manager()
     await m.async_complete("Dishes")

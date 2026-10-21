@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 import logging
 import uuid
+from datetime import date, timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -19,11 +21,13 @@ from homeassistant.util import dt as dt_util, slugify
 from .messages import translate
 from .const import (
     CONF_BONUS,
+    CONF_CHORE_IDS,
     CONF_GOAL,
     CONF_GOAL_BONUS,
     CONF_KID_PERSONS,
     CONF_MANDATORY,
     CONF_CURRENCY,
+    CONF_HISTORY_LIMIT,
     CONF_NOTIFY_KID,
     CONF_NOTIFY_PARENTS,
     CONF_PARENT_PERSONS,
@@ -34,7 +38,7 @@ from .const import (
     DEFAULT_OPTIONS,
     DOMAIN,
     EVENT_TASK_COMPLETED,
-    HISTORY_LIMIT,
+    UNDO_LIMIT,
     POLICY_FORFEIT,
     POLICY_HALF,
     SIGNAL_UPDATE,
@@ -80,6 +84,11 @@ class ChoresManager:
         return self.opt(CONF_BONUS)
 
     @property
+    def chore_ids(self) -> dict[str, str]:
+        """Chores linked to a Maintenance Supporter task: {chore: task id}."""
+        return self.opt(CONF_CHORE_IDS)
+
+    @property
     def rewards(self) -> dict[str, int]:
         return self.opt(CONF_REWARDS)
 
@@ -110,8 +119,15 @@ class ChoresManager:
             "today": _empty_today(),
             "reward_log": [],
             "history": [],
+            "undo": [],  # snapshots taken before each change, newest last
             **stored,
         }
+        # Baseline for the missed-week-close catch-up: without it an upgrade (or a
+        # changed first day of the week) would close the running week right away.
+        week_start = self.opt(CONF_WEEK_START)
+        if "last_close" not in stored or stored.get("close_ref") != week_start:
+            self.data["last_close"] = self._due_close_date().isoformat()
+            self.data["close_ref"] = week_start
 
     @property
     def week(self) -> int:
@@ -141,6 +157,35 @@ class ChoresManager:
     def history(self) -> list[dict[str, Any]]:
         return self.data["history"]
 
+    def _snapshot(self) -> dict[str, Any]:
+        """State to restore if the change about to be made is undone."""
+        return {
+            "week": self.week,
+            "week_bonus": self.week_bonus,
+            "bank": self.bank,
+            "wallet": self.wallet,
+            "today": copy.deepcopy(self.data["today"]),
+        }
+
+    def _push_undo(self, snap: dict[str, Any], label: str, **extra: Any) -> None:
+        self.data["undo"].append({**snap, "label": label, **extra})
+        del self.data["undo"][:-UNDO_LIMIT]
+
+    @property
+    def undo_label(self) -> str | None:
+        """What the next undo would revert, or None when nothing can be undone."""
+        return self.data["undo"][-1]["label"] if self.data["undo"] else None
+
+    def _due_close_date(self) -> date:
+        """The most recent date whose week-close time (23:59) has already passed."""
+        now = dt_util.now()
+        close_day = (WEEK_DAYS.index(self.opt(CONF_WEEK_START)) - 1) % 7
+        for back in range(8):
+            day = (now - timedelta(days=back)).date()
+            if day.weekday() == close_day and (back or (now.hour, now.minute) >= (23, 59)):
+                return day
+        raise AssertionError("unreachable: every weekday occurs within 7 days")
+
     def _record(
         self,
         kind: str,
@@ -169,7 +214,7 @@ class ChoresManager:
                 "wallet": self.wallet,
             }
         )
-        del self.history[:-HISTORY_LIMIT]
+        del self.history[: -int(self.opt(CONF_HISTORY_LIMIT))]
 
     @property
     def today(self) -> dict[str, Any]:
@@ -221,8 +266,20 @@ class ChoresManager:
                 users.add(uid)
         return users
 
+    def _chore_for_event(self, data: Any) -> str | None:
+        """The chore a completed Maintenance Supporter task belongs to.
+
+        A chore linked to a task id keeps working when the task is renamed;
+        chores without a link (or typed by hand) match on the task name.
+        """
+        if task_id := data.get("task_id"):
+            for chore, linked in self.chore_ids.items():
+                if linked == task_id and (chore in self.mandatory or chore in self.bonus):
+                    return chore
+        return data.get("task_name") or None
+
     async def _on_event(self, event: Event) -> None:
-        name = event.data.get("task_name")
+        name = self._chore_for_event(event.data)
         if not name:
             return
         # Maintenance Supporter reports who completed the task (HA user id).
@@ -243,8 +300,16 @@ class ChoresManager:
     async def _on_week_end(self, now: Any) -> None:
         """Close the week at 23:59 on the day before the week-start day."""
         start = WEEK_DAYS.index(self.opt(CONF_WEEK_START))
-        if dt_util.as_local(now).weekday() == (start - 1) % 7:
-            await self.async_close_week()
+        today = dt_util.as_local(now).date()
+        if today.weekday() == (start - 1) % 7 and self.data["last_close"] != today.isoformat():
+            await self.async_close_week(today)
+
+    async def async_catch_up(self) -> None:
+        """Close a week whose 23:59 close was missed (Home Assistant was down)."""
+        due = self._due_close_date()
+        if due.isoformat() > self.data["last_close"]:
+            _LOGGER.info("Closing the week that ended %s (missed while offline)", due)
+            await self.async_close_week(due)
 
     def tr(self, key: str, **kwargs: object) -> str:
         return translate(self.hass.config.language, key, **kwargs)
@@ -307,9 +372,10 @@ class ChoresManager:
         async with self._lock:
             today = self._ensure_today()
 
+            if task in mandatory and task in today["mandatory_done"]:
+                return  # counted once per day
+            snap = self._snapshot()
             if task in mandatory:
-                if task in today["mandatory_done"]:
-                    return  # counted once per day
                 today["mandatory_done"].append(task)
                 award = int(mandatory[task])
                 released = list(today["pending"])
@@ -355,6 +421,7 @@ class ChoresManager:
                             ),
                         )
                     )
+            self._push_undo(snap, task)
             self._changed()
 
         for key, title, msg in notices:
@@ -373,14 +440,17 @@ class ChoresManager:
                 short = True
             else:
                 short = False
+                snap = self._snapshot()
+                reward_uid = None
                 self.data["bank"] = bank - cost
                 if payout:
                     # money reward: nothing to hand out, it goes to the wallet
                     self.data["wallet"] = self.wallet + payout
                 else:
+                    reward_uid = uuid.uuid4().hex
                     self.reward_log.append(
                         {
-                            "uid": uuid.uuid4().hex,
+                            "uid": reward_uid,
                             "summary": label,
                             "description": self.tr(
                                 "redeemed_note",
@@ -391,6 +461,7 @@ class ChoresManager:
                         }
                     )
                 self._record("redeem", label, -cost, "bank", amount=payout)
+                self._push_undo(snap, label, reward_uid=reward_uid)
                 self._changed()
         if short:
             await self._notify(
@@ -431,9 +502,11 @@ class ChoresManager:
     async def async_adjust(self, target: str, points: int, reason: str | None) -> None:
         async with self._lock:
             key = "week" if target == "week" else "bank"
+            snap = self._snapshot()
             before = int(self.data[key])
             self.data[key] = max(before + points, 0)
             self._record("adjust", reason or "", self.data[key] - before, key)
+            self._push_undo(snap, reason or self.tr("adjust_undo_label"))
             self._changed()
         await self._log(
             self.tr(
@@ -447,11 +520,13 @@ class ChoresManager:
     async def async_adjust_wallet(self, amount: int, reason: str | None) -> None:
         """Parent adds money to / deducts money from the wallet (never below 0)."""
         async with self._lock:
+            snap = self._snapshot()
             before = self.wallet
             self.data["wallet"] = max(before + amount, 0)
             self._record(
                 "adjust", reason or "", 0, "wallet", amount=self.wallet - before
             )
+            self._push_undo(snap, reason or self.tr("adjust_undo_label"))
             self._changed()
         await self._log(
             self.tr(
@@ -462,7 +537,8 @@ class ChoresManager:
             )
         )
 
-    async def async_close_week(self) -> None:
+    async def async_close_week(self, scheduled: date | None = None) -> None:
+        """Close the week. `scheduled` is the date of the regular 23:59 close it stands in for."""
         async with self._lock:
             # the goal is measured on mandatory points only; bonus points are
             # banked in full if it is met and lost otherwise
@@ -484,6 +560,9 @@ class ChoresManager:
             bank = self.bank
             self.data["week"] = 0
             self.data["week_bonus"] = 0
+            self.data["undo"] = []  # a closed week can't be reopened
+            if scheduled:
+                self.data["last_close"] = scheduled.isoformat()
             self._record(
                 "week_close",
                 f"{week}/{goal} {'✓' if met else '✗'}"
@@ -518,6 +597,37 @@ class ChoresManager:
                 result=self.tr("goal_met" if met else "goal_missed"),
             )
             + (f" {note}" if note else ""),
+        )
+
+    async def async_undo(self) -> None:
+        """Revert the most recent change to points or the wallet."""
+        async with self._lock:
+            if not self.data["undo"]:
+                raise ServiceValidationError("Nothing to undo")
+            snap = self.data["undo"].pop()
+            before = self._snapshot()
+            for key in ("week", "week_bonus", "bank", "wallet", "today"):
+                self.data[key] = snap[key]
+            if uid := snap.get("reward_uid"):
+                self.data["reward_log"] = [
+                    r for r in self.reward_log if r["uid"] != uid
+                ]
+            label = snap["label"]
+            bank_diff = self.bank - before["bank"]
+            wallet_diff = self.wallet - before["wallet"]
+            if bank_diff:
+                target, points = "bank", bank_diff
+            elif wallet_diff:
+                target, points = "wallet", 0
+            else:
+                target, points = "week", self.week - before["week"]
+            self._record("undo", label, points, target, amount=wallet_diff)
+            self._changed()
+        await self._log(self.tr("undo_log", label=label))
+        await self._notify(
+            CONF_NOTIFY_PARENTS,
+            self.tr("undo_parents_title"),
+            self.tr("undo_parents", label=label, bank=self.bank),
         )
 
     # ------------------------------------------------------------------

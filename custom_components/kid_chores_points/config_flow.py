@@ -29,9 +29,11 @@ from homeassistant.helpers.selector import (
 
 from .const import (
     CONF_BONUS,
+    CONF_CHORE_IDS,
     CONF_CURRENCY,
     CONF_GOAL,
     CONF_GOAL_BONUS,
+    CONF_HISTORY_LIMIT,
     CONF_KID_PERSONS,
     CONF_MANDATORY,
     CONF_NOTIFY_KID,
@@ -43,6 +45,8 @@ from .const import (
     CONF_WEEK_START,
     DEFAULT_OPTIONS,
     DOMAIN,
+    HISTORY_LIMIT_MAX,
+    HISTORY_LIMIT_MIN,
     MS_DOMAIN,
     POLICIES,
     WEEK_DAYS,
@@ -55,18 +59,28 @@ def _points(max_: int = 5000) -> NumberSelector:
     )
 
 
-def _ms_task_options(hass: HomeAssistant) -> list[SelectOptionDict]:
-    """Tasks defined in Maintenance Supporter (empty if it isn't installed)."""
-    options: dict[str, str] = {}
+def _ms_tasks(hass: HomeAssistant) -> dict[str, tuple[str, str]]:
+    """Tasks defined in Maintenance Supporter: {task id: (name, label)}.
+
+    Empty if it isn't installed.
+    """
+    tasks: dict[str, tuple[str, str]] = {}
     for entry in hass.config_entries.async_entries(MS_DOMAIN):
         obj = (entry.data.get("object") or {}).get("name")
-        for task in (entry.data.get("tasks") or {}).values():
+        for task_id, task in (entry.data.get("tasks") or {}).items():
             if not isinstance(task, dict) or not (name := task.get("name")):
                 continue
-            options.setdefault(name, f"{name} ({obj})" if obj else name)
+            tasks[task_id] = (name, f"{name} ({obj})" if obj else name)
+    return tasks
+
+
+def _ms_task_options(hass: HomeAssistant) -> list[SelectOptionDict]:
+    """Task picker options; the value is the task id so renames don't matter."""
     return [
-        SelectOptionDict(value=name, label=label)
-        for name, label in sorted(options.items(), key=lambda kv: kv[1].lower())
+        SelectOptionDict(value=task_id, label=label)
+        for task_id, (_, label) in sorted(
+            _ms_tasks(hass).items(), key=lambda kv: kv[1][1].lower()
+        )
     ]
 
 
@@ -82,7 +96,9 @@ class ChoresConfigFlow(ConfigFlow, domain=DOMAIN):
             await self.async_set_unique_id(user_input["name"].strip().lower())
             self._abort_if_unique_id_configured()
             return self.async_create_entry(
-                title=user_input["name"].strip(), data={}, options=DEFAULT_OPTIONS
+                title=user_input["name"].strip(),
+                data={},
+                options=copy.deepcopy(DEFAULT_OPTIONS),
             )
         return self.async_show_form(
             step_id="user",
@@ -106,10 +122,11 @@ class ChoresOptionsFlow(OptionsFlow):
 
     def _load(self) -> dict[str, Any]:
         if not self._opts:
-            self._opts = {
-                **copy.deepcopy(DEFAULT_OPTIONS),
-                **self.config_entry.options,
-            }
+            # deep copy: the nested dicts are edited in place and must not leak into
+            # the entry's options (or the shared defaults) before they are saved
+            self._opts = copy.deepcopy(
+                {**DEFAULT_OPTIONS, **self.config_entry.options}
+            )
         return self._opts
 
     def _save(self) -> None:
@@ -152,6 +169,7 @@ class ChoresOptionsFlow(OptionsFlow):
             opts[CONF_POLICY] = user_input[CONF_POLICY]
             opts[CONF_WEEK_START] = user_input[CONF_WEEK_START]
             opts[CONF_CURRENCY] = user_input[CONF_CURRENCY].strip() or "kr"
+            opts[CONF_HISTORY_LIMIT] = int(user_input[CONF_HISTORY_LIMIT])
             self._save()
             return await self.async_step_init()
         return self.async_show_form(
@@ -181,6 +199,16 @@ class ChoresOptionsFlow(OptionsFlow):
                     vol.Required(
                         CONF_CURRENCY, default=opts[CONF_CURRENCY]
                     ): TextSelector(),
+                    vol.Required(
+                        CONF_HISTORY_LIMIT, default=opts[CONF_HISTORY_LIMIT]
+                    ): NumberSelector(
+                        NumberSelectorConfig(
+                            min=HISTORY_LIMIT_MIN,
+                            max=HISTORY_LIMIT_MAX,
+                            step=10,
+                            mode=NumberSelectorMode.BOX,
+                        )
+                    ),
                 }
             ),
         )
@@ -281,6 +309,24 @@ class ChoresOptionsFlow(OptionsFlow):
             )
         return TextSelector()
 
+    def _resolve(self, value: str, from_ms: bool) -> tuple[str, str | None]:
+        """Turn the submitted name field into (chore name, linked task id).
+
+        A task picked from the list is linked by id; a typed name is not.
+        """
+        value = str(value).strip()
+        if from_ms and (task := _ms_tasks(self.hass).get(value)):
+            return task[0], value
+        return value, None
+
+    def _link(self, name: str, task_id: str | None) -> None:
+        """Remember (or forget) which Maintenance Supporter task a chore is."""
+        ids = self._load()[CONF_CHORE_IDS]
+        if task_id:
+            ids[name] = task_id
+        else:
+            ids.pop(name, None)
+
     async def _add(
         self,
         kind: str,
@@ -290,13 +336,15 @@ class ChoresOptionsFlow(OptionsFlow):
     ) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
-            name = user_input["name"].strip()
+            name, task_id = self._resolve(user_input["name"], from_ms)
             if name in self._load()[kind]:
                 # never overwrite silently: existing items are changed via Edit
                 errors["name"] = "name_exists"
             elif name:
                 opts = self._load()
                 opts[kind][name] = int(user_input["points"])
+                if from_ms:
+                    self._link(name, task_id)
                 if kind == CONF_REWARDS:
                     # 0 = a normal reward, > 0 = pays that much into the wallet
                     if payout := int(user_input.get("payout", 0)):
@@ -358,10 +406,16 @@ class ChoresOptionsFlow(OptionsFlow):
         if old not in items:
             return await getattr(self, f"async_step_{kind}")()
         errors: dict[str, str] = {}
-        current = {"name": old, "points": items[old], "payout": payouts.get(old, 0)}
+        linked = opts[CONF_CHORE_IDS].get(old) if from_ms else None
+        shown = linked if linked in _ms_tasks(self.hass) else old
+        current = {"name": shown, "points": items[old], "payout": payouts.get(old, 0)}
         if user_input is not None:
             current = {**current, **user_input}
-            new = str(user_input["name"]).strip() or old
+            if user_input["name"] == shown:
+                new, task_id = old, linked  # name field untouched: keep chore and link
+            else:
+                new, task_id = self._resolve(user_input["name"], from_ms)
+                new = new or old
             if new != old and new in items:
                 errors["name"] = "name_exists"
             else:
@@ -375,6 +429,9 @@ class ChoresOptionsFlow(OptionsFlow):
                     payouts.pop(old, None)
                     if payout := int(user_input.get("payout", 0)):
                         payouts[new] = payout
+                if from_ms:
+                    opts[CONF_CHORE_IDS].pop(old, None)
+                    self._link(new, task_id)
                 self._editing = ""
                 self._save()
                 return await getattr(self, f"async_step_{kind}")()
@@ -398,6 +455,8 @@ class ChoresOptionsFlow(OptionsFlow):
         if user_input is not None:
             for name in user_input.get("names", []):
                 items.pop(name, None)
+                if kind != CONF_REWARDS:
+                    self._load()[CONF_CHORE_IDS].pop(name, None)
             self._save()
             return await getattr(self, f"async_step_{kind}")()
         if not items:

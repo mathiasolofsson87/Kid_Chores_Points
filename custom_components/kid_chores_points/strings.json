@@ -34,7 +34,8 @@
           "goal_bonus": "Goal bonus (extra points when the goal is reached)",
           "missed_goal_policy": "If the weekly goal is missed",
           "week_start": "First day of the week",
-          "currency": "Wallet currency"
+          "currency": "Wallet currency",
+          "history_limit": "History length (entries)"
         },
         "description": "The week closes at 23:59 on the day before the first day of the week. Then the week's points move to the bank, depending on whether the goal was reached.",
         "data_description": {
@@ -42,7 +43,8 @@
           "weekly_goal": "Mandatory points needed in one week to reach the goal (bonus-chore points don't count). Reaching it means points this week ≥ the goal.",
           "goal_bonus": "A flat extra amount added to the bank when the week closes with the goal reached, on top of the points earned and the week's bonus points. Example: goal 50, bonus 10, earned 55 → 65 go to the bank (plus any bonus-chore points). Set 0 for no bonus. Never paid when the goal is missed.",
           "missed_goal_policy": "What gets banked if the goal is NOT reached: all of the week's mandatory points, half of them (rounded down), or none. No goal bonus is paid and the week's bonus-chore points are lost either way.",
-          "currency": "Shown after wallet amounts, e.g. kr. Only a label – no conversion."
+          "currency": "Shown after wallet amounts, e.g. kr. Only a label – no conversion.",
+          "history_limit": "How many changes are kept in the points history (the History card and the Points history sensor). When the limit is reached the oldest entries are dropped. Lowering it trims the history at the next change. Between 50 and 1000."
         }
       },
       "notifications": {
@@ -71,7 +73,7 @@
           "name": "Maintenance Supporter task",
           "points": "Points"
         },
-        "description": "Pick a task from Maintenance Supporter (or type a name). Remember to give the task the label `mandatory` in Maintenance Supporter if you want it in the dashboard list. To change an existing chore, use Edit a chore."
+        "description": "Pick a task from Maintenance Supporter (or type a name, which then matches on the task name). Remember to give the task the label `mandatory` in Maintenance Supporter if you want it in the dashboard list. To change an existing chore, use Edit a chore."
       },
       "mandatory_remove": {
         "title": "Remove mandatory chores",
@@ -81,7 +83,7 @@
       },
       "bonus": {
         "title": "Bonus chores",
-        "description": "Only paid out once all mandatory chores are done that day (held as pending until then). Bonus points are collected separately from the weekly goal and are only banked if the goal is met.\\n\\n{items}\\n\\nTo show these chores in the dashboard's Maintenance Supporter list, give each task the label `bonus` in Maintenance Supporter.",
+        "description": "Only paid out once all mandatory chores are done that day (held as pending until then). Bonus points are collected separately from the weekly goal and are only banked if the goal is met.\n\n{items}\n\nTo show these chores in the dashboard's Maintenance Supporter list, give each task the label `bonus` in Maintenance Supporter.",
         "menu_options": {
           "bonus_add": "Add a chore",
           "bonus_edit": "Edit a chore",
@@ -95,7 +97,7 @@
           "name": "Maintenance Supporter task",
           "points": "Points"
         },
-        "description": "Pick a task from Maintenance Supporter (or type a name). Remember to give the task the label `bonus` in Maintenance Supporter if you want it in the dashboard list. To change an existing chore, use Edit a chore."
+        "description": "Pick a task from Maintenance Supporter (or type a name, which then matches on the task name). Remember to give the task the label `bonus` in Maintenance Supporter if you want it in the dashboard list. To change an existing chore, use Edit a chore."
       },
       "bonus_remove": {
         "title": "Remove bonus chores",
@@ -160,7 +162,7 @@
           "name": "Maintenance Supporter task",
           "points": "Points"
         },
-        "description": "Change the points, or pick another task / type another name to rename the chore. Matching is by task name, so re-pick the chore here if you rename the task in Maintenance Supporter."
+        "description": "Change the points, or pick another task / type another name to rename the chore. A chore picked from the list stays linked to its task, so renaming the task in Maintenance Supporter doesn't break it. A name you type matches on the task name only."
       },
       "bonus_edit": {
         "title": "Edit bonus chore",
@@ -174,7 +176,7 @@
           "name": "Maintenance Supporter task",
           "points": "Points"
         },
-        "description": "Change the points, or pick another task / type another name to rename the chore. Matching is by task name, so re-pick the chore here if you rename the task in Maintenance Supporter."
+        "description": "Change the points, or pick another task / type another name to rename the chore. A chore picked from the list stays linked to its task, so renaming the task in Maintenance Supporter doesn't break it. A name you type matches on the task name only."
       }
     },
     "error": {
@@ -278,6 +280,16 @@
           "name": "Reason",
           "description": "Shown in the logbook and history."
         },
+        "config_entry": {
+          "name": "Tracker",
+          "description": "Config entry ID (only needed with several trackers)."
+        }
+      }
+    },
+    "undo": {
+      "name": "Undo last change",
+      "description": "Undo the most recent change to points or the wallet (a completed chore, a redemption or an adjustment). Can be repeated to step further back, but not across a week close.",
+      "fields": {
         "config_entry": {
           "name": "Tracker",
           "description": "Config entry ID (only needed with several trackers)."

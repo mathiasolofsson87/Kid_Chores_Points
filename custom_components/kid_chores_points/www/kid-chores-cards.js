@@ -42,6 +42,8 @@ const KCP_TEXT = {
     h_redeem: "Redeemed",
     h_adjust: "Adjustment",
     h_week_close: "Week closed",
+    h_undo: "Undone",
+    undo_btn: "Undo: {l}",
     h_no_reason: "No reason given",
     h_to_bank: "to the bank",
     h_balances: "Week {w} · Bank {b}",
@@ -107,6 +109,8 @@ const KCP_TEXT = {
     h_redeem: "Inlöst",
     h_adjust: "Justering",
     h_week_close: "Veckan stängd",
+    h_undo: "Ångrat",
+    undo_btn: "Ångra: {l}",
     h_no_reason: "Ingen anledning angiven",
     h_to_bank: "till banken",
     h_balances: "Vecka {w} · Bank {b}",
@@ -797,6 +801,7 @@ const KCP_HISTORY = {
   adjust: ["mdi:tune-vertical", "#0a84ff"],
   wallet: ["mdi:wallet", "#64d2ff"],
   week_close: ["mdi:flag-checkered", "#bf5af2"],
+  undo: ["mdi:undo-variant", "#8e8e93"],
 };
 
 class KidChoresHistoryCard extends HTMLElement {
@@ -899,6 +904,9 @@ class KidChoresHistoryCard extends HTMLElement {
           <div class="pts ${cls}">${sign}${pts} ${kcpEsc(unit)}${kcpEsc(where)}${gain ? `<div class="gain">${kcpEsc(gain)}</div>` : ""}</div>
         </div>`;
     }
+    const undoLabel = st?.attributes.undo_label;
+    const undo = undoLabel
+      ? `<button class="undo"><ha-icon icon="mdi:undo-variant"></ha-icon>${kcpEsc(kcpT(h, "undo_btn", { l: undoLabel }))}</button>` : "";
     const more = all.length > rows.length
       ? `<button class="more">${kcpEsc(kcpT(h, "h_more"))}</button>` : "";
 
@@ -923,14 +931,30 @@ class KidChoresHistoryCard extends HTMLElement {
         .pts.pend { color: var(--secondary-text-color); }
         .pts .gain { color: var(--success-color, #30d158); }
         .empty { padding: 16px 0; color: var(--secondary-text-color); }
+        .undo { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+          margin: 8px 0 4px; padding: 10px; border: 1px solid var(--divider-color, #888);
+          border-radius: 10px; background: transparent; font: inherit; cursor: pointer;
+          color: var(--primary-text-color); }
+        .undo[disabled] { opacity: .5; cursor: default; }
         .more { width: 100%; margin-top: 12px; padding: 10px; border: 1px solid var(--divider-color, #888);
           border-radius: 10px; background: transparent; font: inherit; cursor: pointer;
           color: var(--primary-text-color); }
       </style>
       <ha-card>
         <div class="t">${kcpEsc(cfg.title ?? kcpT(h, "history_title"))}</div>
-        ${body}${more}
+        ${undo}${body}${more}
       </ha-card>`;
+    this.shadowRoot.querySelector(".undo")?.addEventListener("click", async (ev) => {
+      const btn = ev.currentTarget;
+      btn.disabled = true;
+      try {
+        await h.callService("kid_chores_points", "undo", {
+          config_entry: (S.points_bank || S.points_week).attributes.entry_id,
+        });
+      } catch (err) {
+        btn.textContent = kcpT(h, "failed", { e: err?.message || err });
+      }
+    });
     this.shadowRoot.querySelector(".more")?.addEventListener("click", () => {
       this._shown += step;
       this._sig = "";
@@ -1032,7 +1056,7 @@ class KidChoresTodoCard extends HTMLElement {
           if (t.archived || t.is_done || !t.sensor_entity_id) continue;
           if (t.notes && String(t.notes).trim()) notes.set(t.name, String(t.notes).trim());
           const labelOk = !labels.length || (t.labels || []).some((l) => labels.includes(l));
-          tasks.push({ name: t.name, entity: t.sensor_entity_id, status: t.status, actionable: labelOk && statuses.includes(t.status) });
+          tasks.push({ id: t.id, name: t.name, entity: t.sensor_entity_id, status: t.status, actionable: labelOk && statuses.includes(t.status) });
         }
       }
       this._tasks = tasks;
@@ -1043,6 +1067,22 @@ class KidChoresTodoCard extends HTMLElement {
     }
     this._sig = "";
     this._render();
+  }
+
+  /* Pairs chores with Maintenance Supporter tasks: by task id when the chore is linked
+   * to one (so renaming the task doesn't break it), otherwise by name. */
+  _matcher(ids) {
+    const byName = new Map(this._tasks.map((t) => [t.name, t]));
+    const byId = new Map(this._tasks.filter((t) => t.id).map((t) => [t.id, t]));
+    const left = new Set(byName.values());
+    return {
+      take: (name) => {
+        const t = (ids[name] && byId.get(ids[name])) || byName.get(name);
+        if (t) left.delete(t);
+        return t;
+      },
+      rest: () => [...left],
+    };
   }
 
   _lead() {
@@ -1059,17 +1099,16 @@ class KidChoresTodoCard extends HTMLElement {
     const attrs = S?.mandatory_remaining?.attributes;
     if (!attrs) return null;
     const pts = attrs.mandatory_chores || {};
-    const byName = new Map(this._tasks.map((t) => [t.name, t]));
+    const match = this._matcher(attrs.chore_ids || {});
     const rows = [];
     // done chores are not listed
     for (const name of attrs.remaining || []) {
-      const t = byName.get(name);
-      byName.delete(name);
+      const t = match.take(name);
       // A chore that exists in Maintenance Supporter is only shown while it matches the filters.
       if (t && !t.actionable) continue;
       rows.push({ name, done: false, pts: pts[name], ms: t || null });
     }
-    for (const t of byName.values()) {
+    for (const t of match.rest()) {
       if (t.actionable) rows.push({ name: t.name, done: false, ms: t });
     }
     return rows.filter((r, i, all) => all.findIndex((x) => x.name === r.name) === i);
@@ -1079,7 +1118,7 @@ class KidChoresTodoCard extends HTMLElement {
     const h = this._hass, cfg = this._config;
     if (!h || !cfg) return;
     const rows = this._rows();
-    if (rows) for (const r of rows) r.notes = this._notes.get(r.name) || "";
+    if (rows) for (const r of rows) r.notes = this._notes.get(r.ms?.name || r.name) || "";
     const sig = JSON.stringify([rows, h.language, cfg, [...this._busy], [...this._open], this._error, rows && this._lead(rows)]);
     if (sig === this._sig) return;
     this._sig = sig;
@@ -1307,11 +1346,10 @@ class KidChoresBonusCard extends KidChoresTodoCard {
     if (!attrs) return null;
     if (this._locked()) return [];
     const doneToday = S.points_today?.attributes.bonus_done || [];
-    const byName = new Map(this._tasks.map((t) => [t.name, t]));
+    const match = this._matcher(attrs.chore_ids || {});
     const rows = [];
     for (const [name, pts] of Object.entries(attrs.bonus_chores || {})) {
-      const t = byName.get(name);
-      byName.delete(name);
+      const t = match.take(name);
       const ms = t?.actionable ? t : null;
       // A chore that exists in Maintenance Supporter is only shown while it matches the filters;
       // one that was already done today is not shown (unless it is due again).
@@ -1319,7 +1357,7 @@ class KidChoresBonusCard extends KidChoresTodoCard {
       if (!ms && doneToday.includes(name)) continue;
       rows.push({ name, pts, ms, done: false, icon: "mdi:star-circle-outline" });
     }
-    for (const t of byName.values()) {
+    for (const t of match.rest()) {
       if (t.actionable) rows.push({ name: t.name, ms: t, done: false, icon: "mdi:star-circle-outline" });
     }
     return rows;
