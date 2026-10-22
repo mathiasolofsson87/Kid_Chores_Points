@@ -280,12 +280,10 @@ async def test_medal_list_shows_progress_and_the_next_medal(make_manager, freeze
     await _perfect_day(m, freezer, TUE)
     day_3 = next(x for x in m.medal_list() if x["id"] == "day_3")
     assert (day_3["progress"], day_3["at"], day_3["earned"]) == (2, 3, None)
-    assert m.next_medal("day") == {
-        "id": "day_3",
-        "name": "Little Sprout",
-        "at": 3,
-        "remaining": 1,
-    }
+    nxt = m.next_medal("day")
+    assert (nxt["id"], nxt["name"], nxt["at"], nxt["remaining"]) == ("day_3", "Little Sprout", 3, 1)
+    assert nxt["names"] == {"en": "Little Sprout", "sv": "Lilla Grodden"}
+    assert day_3["hows"]["sv"] == "Gör alla dagens sysslor 3 dagar i rad"
 
 
 async def test_medal_names_follow_the_language(hass, make_manager, freezer):

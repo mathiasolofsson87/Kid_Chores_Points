@@ -420,3 +420,20 @@ test("there is no show-all button when nothing is hidden", async () => {
   const card = await mount(win, "kid-chores-medals-card", {}, medalsHass([medal("day_3", { earned: "2026-01-05" })]));
   assert.equal(card.shadowRoot.querySelector(".more"), null);
 });
+
+test("medal names and texts come in the viewer's language, whatever language the server runs in", async () => {
+  const names = { en: "Little Sprout", sv: "Lilla Grodden" };
+  const hows = { en: "Do all your daily chores 3 days in a row", sv: "Gör alla dagens sysslor 3 dagar i rad" };
+  const hass = medalsHass([medal("day_3", { names, hows })]); // name and how are in English
+  hass.language = "sv";
+  hass.states["sensor.kid_day_streak"].attributes.next = {
+    id: "day_3", name: "Little Sprout", names, at: 3, remaining: 1,
+  };
+  const card = await mount(win, "kid-chores-medals-card", {}, hass);
+  assert.match(card.shadowRoot.textContent, /Lilla Grodden/);
+  assert.match(card.shadowRoot.textContent, /Gör alla dagens sysslor 3 dagar i rad/);
+  assert.doesNotMatch(card.shadowRoot.textContent, /Little Sprout/);
+
+  const status = await mount(win, "kid-chores-status-card", {}, hass);
+  assert.match(status.shadowRoot.textContent, /1 till ”Lilla Grodden”/);
+});

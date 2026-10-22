@@ -227,6 +227,7 @@
     for (const f of found) if (f.device === chosen) out[f.st.attributes.key] = f.st;
     return out;
   };
+  var kcpPick = (hass, obj, field) => obj?.[`${field}s`]?.[(hass?.language || "en").slice(0, 2)] ?? obj?.[field];
   var kcpCount = (hass, unit, n) => `${n} ${kcpT(hass, `unit_${unit}_${n === 1 ? "1" : "n"}`)}`;
 
   // frontend/src/cards/rewards.js
@@ -497,7 +498,7 @@
         const [src, unit, next] = weekCloser ? [week, "week", weekNext] : [day, "day", dayNext];
         const count = parseInt(src.state, 10) || 0;
         const lines = [
-          next ? kcpT(h, "streak_next", { n: next.remaining, name: next.name }) : kcpT(h, "streak_best", { n: src.attributes.best })
+          next ? kcpT(h, "streak_next", { n: next.remaining, name: kcpPick(h, next, "name") }) : kcpT(h, "streak_best", { n: src.attributes.best })
         ];
         const risk = day.attributes.at_risk;
         if (risk) lines.push(kcpT(h, "streak_risk", { n: parseInt(day.state, 10) || 0 }));
@@ -1504,7 +1505,7 @@
         const unit = { day: "pu_day", week: "pu_week", chores: "pu_chores", bonus: "pu_bonus" }[m.kind];
         const text = unit ? `${m.progress} / ${m.at} ${kcpT(h, unit)}` : kcpT(h, "m_not_yet");
         const pct = Math.min(100, Math.round(m.progress / m.at * 100));
-        sub = `<div class="how">${kcpEsc(m.how)}</div>
+        sub = `<div class="how">${kcpEsc(kcpPick(h, m, "how"))}</div>
         <div class="bar"><div style="width:${pct}%"></div></div>
         <div class="sub">${kcpEsc(text)}</div>`;
       }
@@ -1513,7 +1514,7 @@
       return `<div class="medal ${earned ? "got" : "lock"}" data-id="${kcpEsc(m.id)}">
       ${flag}
       <div class="art">${kcpMedalSvg(m.id, 72)}</div>
-      <div class="name">${kcpEsc(m.name)}</div>
+      <div class="name">${kcpEsc(kcpPick(h, m, "name"))}</div>
       ${sub}
       ${earned ? "" : bonus}
     </div>`;

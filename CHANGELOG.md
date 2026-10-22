@@ -2,6 +2,11 @@
 
 All notable changes to Kid Chores & Points. Versions match the git tags and the GitHub releases.
 
+## 1.7.1 – 2026-10-22
+
+### Fixed
+- **Notifications now follow the recipient's language.** They were always sent in the Home Assistant system language, so a child whose own profile is set to Swedish still got English notifications. They now use the language of the person's own profile (child and parents separately; the system language if there is none), and Configure → *Notifications* has a new *Language of the child's/parents' notifications* setting to choose English or Swedish explicitly. The Medals and Status cards show medal names in the viewer's own language, too.
+
 ## 1.7.0 – 2026-10-22
 
 ### Added

@@ -1,4 +1,4 @@
-import { kcpCount, kcpEsc, kcpT, kcpSensors } from "../helpers.js";
+import { kcpCount, kcpEsc, kcpPick, kcpT, kcpSensors } from "../helpers.js";
 
 /* ------------------------------------------------------------------ */
 /*  Status card                                                        */
@@ -92,7 +92,7 @@ class KidChoresStatusCard extends HTMLElement {
       const count = parseInt(src.state, 10) || 0;
       const lines = [
         next
-          ? kcpT(h, "streak_next", { n: next.remaining, name: next.name })
+          ? kcpT(h, "streak_next", { n: next.remaining, name: kcpPick(h, next, "name") })
           : kcpT(h, "streak_best", { n: src.attributes.best }),
       ];
       const risk = day.attributes.at_risk;

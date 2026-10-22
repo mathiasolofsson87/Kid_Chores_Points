@@ -103,6 +103,8 @@ Good to know:
 
 Notifications, logbook entries and the "last week result" text use the Home Assistant system language (**Settings → System → General**). English and Swedish are included; other languages fall back to English. The dashboard cards follow each user's own language.
 
+Notifications are sent in the language of the person who gets them: under Configure → *Notifications* the **language of the child's notifications** and the **language of the parents' notifications** are *Automatic* by default, which means the language in that person's own Home Assistant profile (the user linked to the person you selected; with several parents they must all agree), or the system language if there is none. Choose English or Swedish there to always use that one. The logbook, the history and the *last week result* sensor stay in the system language.
+
 ## Entities (per tracker)
 
 - **Sensors:** points this week (mandatory only), bonus points this week, points bank, **wallet** (unit = your currency), weekly goal, points to goal, week progress, points today, mandatory chores remaining (attributes list remaining/done chores and the configured chores), pending bonus points, points history (the `history` attribute holds the timeline), last week result. With streaks and medals: **day streak** and **week streak** (best streak, whether it is at risk, the next medal), **medals** (the number earned; the `medals` attribute lists every medal with its target, bonus, progress and date earned), **chores done** and **bonus chores done**.

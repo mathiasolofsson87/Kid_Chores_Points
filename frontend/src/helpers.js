@@ -49,5 +49,9 @@ export const kcpSensors = (hass, device) => {
   return out;
 };
 
+/* A text the integration sends in every language ({name, names: {en, sv}}): the viewer's own. */
+export const kcpPick = (hass, obj, field) =>
+  obj?.[`${field}s`]?.[(hass?.language || "en").slice(0, 2)] ?? obj?.[field];
+
 /* "1 day" / "3 days" for the units day and week. */
 export const kcpCount = (hass, unit, n) => `${n} ${kcpT(hass, `unit_${unit}_${n === 1 ? "1" : "n"}`)}`;

@@ -55,8 +55,14 @@
         "data": {
           "kid_persons": "Child (person)",
           "parent_persons": "Parents (persons)",
+          "language_kid": "Language of the child's notifications",
+          "language_parents": "Language of the parents' notifications",
           "notify_kid": "Extra notify services for the child",
           "notify_parents": "Extra notify services for the parents"
+        },
+        "data_description": {
+          "language_kid": "Automatic uses the language set in the child's own Home Assistant profile (the person's user), or the system language if there is none. Choose a language to always use that one.",
+          "language_parents": "Automatic uses the language set in the parents' own profiles when they all agree, otherwise the system language."
         }
       },
       "mandatory": {
@@ -301,6 +307,13 @@
         "fri": "Friday",
         "sat": "Saturday",
         "sun": "Sunday"
+      }
+    },
+    "notification_language": {
+      "options": {
+        "auto": "Automatic",
+        "en": "English",
+        "sv": "Svenska"
       }
     }
   },

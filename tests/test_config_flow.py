@@ -12,6 +12,8 @@ from homeassistant.data_entry_flow import FlowResultType, InvalidData
 
 from custom_components.kid_chores_points.const import (
     CONF_CHORE_IDS,
+    CONF_LANGUAGE_KID,
+    CONF_LANGUAGE_PARENTS,
     CONF_MANDATORY,
     CONF_MEDAL_RULES,
     CONF_MEDALS,
@@ -234,3 +236,20 @@ async def test_targets_must_grow_from_one_medal_to_the_next(hass, entry):
     assert result["type"] is FlowResultType.FORM
     assert result["errors"] == {"base": "medal_order"}
     assert entry.options[CONF_MEDAL_RULES] == {}
+
+
+# ----------------------------------------------------------------------
+# Notification language
+# ----------------------------------------------------------------------
+async def test_notification_language_is_automatic_until_chosen(hass, entry):
+    assert entry.options[CONF_LANGUAGE_KID] == "auto"
+    result = await _open(hass, entry, "notifications")
+    await _step(hass, result["flow_id"], {CONF_LANGUAGE_KID: "sv", CONF_LANGUAGE_PARENTS: "auto"})
+    assert entry.options[CONF_LANGUAGE_KID] == "sv"
+    assert entry.options[CONF_LANGUAGE_PARENTS] == "auto"
+
+
+async def test_an_unknown_notification_language_is_refused(hass, entry):
+    result = await _open(hass, entry, "notifications")
+    with pytest.raises(InvalidData):
+        await _step(hass, result["flow_id"], {CONF_LANGUAGE_KID: "de", CONF_LANGUAGE_PARENTS: "auto"})

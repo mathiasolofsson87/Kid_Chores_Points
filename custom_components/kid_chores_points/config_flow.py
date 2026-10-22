@@ -41,6 +41,8 @@ from .const import (
     CONF_GOAL_BONUS,
     CONF_HISTORY_LIMIT,
     CONF_KID_PERSONS,
+    CONF_LANGUAGE_KID,
+    CONF_LANGUAGE_PARENTS,
     CONF_MANDATORY,
     CONF_MEDAL_RULES,
     CONF_MEDALS,
@@ -57,12 +59,14 @@ from .const import (
     DOMAIN,
     HISTORY_LIMIT_MAX,
     HISTORY_LIMIT_MIN,
+    LANGUAGE_AUTO,
     MEDAL_BONUS_MAX,
     MS_DOMAIN,
     POLICIES,
     WEEK_DAYS,
 )
 from .medals import AT_MAX, GROUPS, group_medals, medal_rules
+from .messages import MESSAGES
 
 
 def _points(max_: int = 5000) -> NumberSelector:
@@ -371,6 +375,8 @@ class ChoresOptionsFlow(OptionsFlow):
                 CONF_NOTIFY_PARENTS,
             ):
                 opts[key] = user_input.get(key, [])
+            for key in (CONF_LANGUAGE_KID, CONF_LANGUAGE_PARENTS):
+                opts[key] = user_input.get(key, LANGUAGE_AUTO)
             self._save()
             return await self.async_step_init()
         services = sorted(
@@ -393,6 +399,13 @@ class ChoresOptionsFlow(OptionsFlow):
                 )
             )
 
+        language_selector = SelectSelector(
+            SelectSelectorConfig(
+                options=[LANGUAGE_AUTO, *MESSAGES],
+                translation_key="notification_language",
+                mode=SelectSelectorMode.DROPDOWN,
+            )
+        )
         person_selector = EntitySelector(
             EntitySelectorConfig(domain="person", multiple=True)
         )
@@ -406,6 +419,12 @@ class ChoresOptionsFlow(OptionsFlow):
                     vol.Optional(
                         CONF_PARENT_PERSONS, default=opts[CONF_PARENT_PERSONS]
                     ): person_selector,
+                    vol.Required(
+                        CONF_LANGUAGE_KID, default=opts[CONF_LANGUAGE_KID]
+                    ): language_selector,
+                    vol.Required(
+                        CONF_LANGUAGE_PARENTS, default=opts[CONF_LANGUAGE_PARENTS]
+                    ): language_selector,
                     vol.Optional(
                         CONF_NOTIFY_KID, default=opts[CONF_NOTIFY_KID]
                     ): selector(),

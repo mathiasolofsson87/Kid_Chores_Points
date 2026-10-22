@@ -1,4 +1,4 @@
-import { kcpCount, kcpEsc, kcpT, kcpSensors } from "../helpers.js";
+import { kcpCount, kcpEsc, kcpPick, kcpT, kcpSensors } from "../helpers.js";
 import { kcpMedalSvg } from "../medal-icons.js";
 import { KidChoresStatusCardEditor } from "./status.js";
 
@@ -63,7 +63,7 @@ class KidChoresMedalsCard extends HTMLElement {
       const unit = { day: "pu_day", week: "pu_week", chores: "pu_chores", bonus: "pu_bonus" }[m.kind];
       const text = unit ? `${m.progress} / ${m.at} ${kcpT(h, unit)}` : kcpT(h, "m_not_yet");
       const pct = Math.min(100, Math.round((m.progress / m.at) * 100));
-      sub = `<div class="how">${kcpEsc(m.how)}</div>
+      sub = `<div class="how">${kcpEsc(kcpPick(h, m, "how"))}</div>
         <div class="bar"><div style="width:${pct}%"></div></div>
         <div class="sub">${kcpEsc(text)}</div>`;
     }
@@ -72,7 +72,7 @@ class KidChoresMedalsCard extends HTMLElement {
     return `<div class="medal ${earned ? "got" : "lock"}" data-id="${kcpEsc(m.id)}">
       ${flag}
       <div class="art">${kcpMedalSvg(m.id, 72)}</div>
-      <div class="name">${kcpEsc(m.name)}</div>
+      <div class="name">${kcpEsc(kcpPick(h, m, "name"))}</div>
       ${sub}
       ${earned ? "" : bonus}
     </div>`;

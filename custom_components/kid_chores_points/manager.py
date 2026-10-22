@@ -9,6 +9,7 @@ from datetime import date, time, timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.components.frontend.storage import async_user_store
 from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import entity_registry as er
@@ -30,7 +31,7 @@ from .medals import (
     group_medals,
     medal_rules,
 )
-from .messages import translate
+from .messages import MESSAGES, translate
 from .const import (
     CONF_BEDTIME,
     CONF_BEDTIME_LEAD,
@@ -40,6 +41,8 @@ from .const import (
     CONF_GOAL,
     CONF_GOAL_BONUS,
     CONF_KID_PERSONS,
+    CONF_LANGUAGE_KID,
+    CONF_LANGUAGE_PARENTS,
     CONF_MANDATORY,
     CONF_MEDAL_RULES,
     CONF_MEDALS,
@@ -57,6 +60,7 @@ from .const import (
     DEFAULT_OPTIONS,
     DOMAIN,
     EVENT_TASK_COMPLETED,
+    LANGUAGE_AUTO,
     PERFECT_DAYS_KEPT,
     POLICY_FORFEIT,
     POLICY_HALF,
@@ -104,6 +108,7 @@ class ChoresManager:
         self.data: dict[str, Any] = {}
         self._prev: dict[str, int] = {}
         self.signal = SIGNAL_UPDATE.format(entry.entry_id)
+        self._langs: dict[str, str] = {}  # notification language per recipient: kid / parents
 
     # ------------------------------------------------------------------
     # Options helpers
@@ -330,20 +335,26 @@ class ChoresManager:
     def _medal_notices(
         self, medal: Medal, at: int, bonus: int, name: str
     ) -> list[tuple[str, str, str]]:
-        how = self.tr(f"how_{medal.kind}", n=at)
         notices = [("log", "", self.tr("medal_log", name=name))]
         if self.opt(CONF_MEDALS_NOTIFY):
-            extra = self.tr("medal_bonus", bonus=bonus) if bonus else ""
+            key = f"medal_{medal.id}"
+            how = f"how_{medal.kind}"
+            extra_kid = self.tr_kid("medal_bonus", bonus=bonus) if bonus else ""
+            extra_parents = self.tr_parents("medal_bonus", bonus=bonus) if bonus else ""
             notices += [
                 (
                     CONF_NOTIFY_KID,
-                    self.tr("medal_title"),
-                    self.tr("medal_kid", name=name, how=how) + extra,
+                    self.tr_kid("medal_title"),
+                    self.tr_kid("medal_kid", name=self.tr_kid(key), how=self.tr_kid(how, n=at))
+                    + extra_kid,
                 ),
                 (
                     CONF_NOTIFY_PARENTS,
-                    self.tr("medal_parents_title"),
-                    self.tr("medal_parents", name=name, how=how) + extra,
+                    self.tr_parents("medal_parents_title"),
+                    self.tr_parents(
+                        "medal_parents", name=self.tr_parents(key), how=self.tr_parents(how, n=at)
+                    )
+                    + extra_parents,
                 ),
             ]
         return notices
@@ -357,6 +368,7 @@ class ChoresManager:
                 return {
                     "id": medal.id,
                     "name": self.tr(f"medal_{medal.id}"),
+                    "names": self._tr_all(f"medal_{medal.id}"),
                     "at": at,
                     "remaining": max(at - self._progress(kind), 0),
                 }
@@ -384,7 +396,9 @@ class ChoresManager:
                     "kind": medal.kind,
                     "tier": medal.tier,
                     "name": self.tr(f"medal_{medal.id}"),
+                    "names": self._tr_all(f"medal_{medal.id}"),
                     "how": self.tr(f"how_{medal.kind}", n=at),
+                    "hows": self._tr_all(f"how_{medal.kind}", n=at),
                     "at": at,
                     "bonus": bonus,
                     "earned": got["date"] if got else None,
@@ -499,14 +513,52 @@ class ChoresManager:
     async def async_stop(self) -> None:
         await self._store.async_save(self.data)
 
-    def _kid_user_ids(self) -> set[str]:
-        """Home Assistant user ids linked to the configured child person(s)."""
+    def _user_ids(self, persons: list[str]) -> set[str]:
+        """Home Assistant user ids linked to the given person entities."""
         users: set[str] = set()
-        for person in self.opt(CONF_KID_PERSONS):
+        for person in persons:
             state = self.hass.states.get(person)
             if state and (uid := state.attributes.get("user_id")):
                 users.add(uid)
         return users
+
+    def _kid_user_ids(self) -> set[str]:
+        """Home Assistant user ids linked to the configured child person(s)."""
+        return self._user_ids(self.opt(CONF_KID_PERSONS))
+
+    async def _profile_language(self, persons: list[str]) -> str | None:
+        """The language set in the Home Assistant profile of these persons' users.
+
+        None if none is set or they disagree (e.g. two parents with different languages).
+        """
+        languages: set[str] = set()
+        for user_id in self._user_ids(persons):
+            try:
+                store = await async_user_store(self.hass, user_id)
+            except Exception:  # noqa: BLE001
+                continue
+            value = store.data.get("language")
+            language = value.get("language") if isinstance(value, dict) else value
+            if isinstance(language, str) and language:
+                languages.add(language.split("-")[0].lower())
+        return languages.pop() if len(languages) == 1 else None
+
+    async def _refresh_languages(self) -> None:
+        """Decide in which language the child and the parents are notified.
+
+        The chosen language in Configure wins; on "auto" it is the language of the
+        person's own Home Assistant profile, and the system language if there is none.
+        """
+        for role, persons, option in (
+            ("kid", CONF_KID_PERSONS, CONF_LANGUAGE_KID),
+            ("parents", CONF_PARENT_PERSONS, CONF_LANGUAGE_PARENTS),
+        ):
+            language = self.opt(option)
+            if language == LANGUAGE_AUTO:
+                language = await self._profile_language(self.opt(persons))
+            self._langs[role] = (
+                language if language in MESSAGES else self.hass.config.language
+            )
 
     def _chore_for_event(self, data: Any) -> str | None:
         """The chore a completed Maintenance Supporter task belongs to.
@@ -565,6 +617,7 @@ class ChoresManager:
 
     async def async_bedtime_reminder(self) -> None:
         """Tell the child which mandatory chores are still open (once per day)."""
+        await self._refresh_languages()
         async with self._lock:
             today = dt_util.now().date().isoformat()
             remaining = self.mandatory_remaining()
@@ -574,14 +627,14 @@ class ChoresManager:
             self._store.async_delay_save(lambda: self.data, 1)
         items = [f"{name} (+{self.mandatory[name]} p)" for name in remaining]
         if len(items) == 1:
-            message = self.tr("bedtime_one", left=items[0])
+            message = self.tr_kid("bedtime_one", left=items[0])
         else:
-            message = self.tr(
+            message = self.tr_kid(
                 "bedtime_many", n=len(items), left="\n".join(f"• {i}" for i in items)
             )
         if self.medals_on and (streak := self.day_streak()):
-            message += "\n" + self.tr("streak_risk", n=streak)
-        await self._notify(CONF_NOTIFY_KID, self.tr("bedtime_title"), message)
+            message += "\n" + self.tr_kid("streak_risk", n=streak)
+        await self._notify(CONF_NOTIFY_KID, self.tr_kid("bedtime_title"), message)
 
     async def async_catch_up(self) -> None:
         """Close a week whose 23:59 close was missed (Home Assistant was down)."""
@@ -591,7 +644,23 @@ class ChoresManager:
             await self.async_close_week(due)
 
     def tr(self, key: str, **kwargs: object) -> str:
+        """Text in the Home Assistant system language (logbook, history, sensors)."""
         return translate(self.hass.config.language, key, **kwargs)
+
+    def tr_kid(self, key: str, **kwargs: object) -> str:
+        """Text in the language of the child's notifications."""
+        return translate(self._langs.get("kid") or self.hass.config.language, key, **kwargs)
+
+    def tr_parents(self, key: str, **kwargs: object) -> str:
+        """Text in the language of the parents' notifications."""
+        return translate(
+            self._langs.get("parents") or self.hass.config.language, key, **kwargs
+        )
+
+    @staticmethod
+    def _tr_all(key: str, **kwargs: object) -> dict[str, str]:
+        """The text in every language, so a card can pick the viewer's own."""
+        return {language: translate(language, key, **kwargs) for language in MESSAGES}
 
     # ------------------------------------------------------------------
     # Notifications / logbook
@@ -655,6 +724,7 @@ class ChoresManager:
                 raise ServiceValidationError(f"Unknown chore: {task}")
             return
 
+        await self._refresh_languages()
         notices: list[tuple[str, str, str]] = []
         async with self._lock:
             today = self._ensure_today()
@@ -684,11 +754,11 @@ class ChoresManager:
                         )
                     today["bonus_done"].extend(p["name"] for p in today["pending"])
                     today["pending"] = []
-                    msg = self.tr("mandatory_done")
+                    msg = self.tr_kid("mandatory_done")
                     if pending_sum:
-                        msg += self.tr("pending_released", n=pending_sum)
+                        msg += self.tr_kid("pending_released", n=pending_sum)
                     notices.append(
-                        (CONF_NOTIFY_KID, self.tr("mandatory_done_title"), msg)
+                        (CONF_NOTIFY_KID, self.tr_kid("mandatory_done_title"), msg)
                     )
                 else:
                     award = 0
@@ -711,8 +781,8 @@ class ChoresManager:
                     notices.append(
                         (
                             CONF_NOTIFY_KID,
-                            self.tr("pending_title"),
-                            self.tr(
+                            self.tr_kid("pending_title"),
+                            self.tr_kid(
                                 "pending",
                                 pts=pts,
                                 task=task,
@@ -732,6 +802,7 @@ class ChoresManager:
         cost = rate * units
         payout = int(self.payouts.get(reward, 0)) * units
         label = reward if units == 1 else f"{units} × {reward}"
+        await self._refresh_languages()
         notices: list[tuple[str, str, str]] = []
         group = uuid.uuid4().hex[:12]
         async with self._lock:
@@ -774,8 +845,8 @@ class ChoresManager:
         if short:
             await self._notify(
                 CONF_NOTIFY_KID,
-                self.tr("not_enough_title"),
-                self.tr("not_enough", label=label, cost=cost, bank=bank),
+                self.tr_kid("not_enough_title"),
+                self.tr_kid("not_enough", label=label, cost=cost, bank=bank),
             )
             raise ServiceValidationError("Not enough points in the bank")
         left = bank - cost
@@ -786,26 +857,28 @@ class ChoresManager:
             )
             await self._notify(
                 CONF_NOTIFY_PARENTS,
-                self.tr("cashout_parents_title"),
-                self.tr("cashout_parents", label=label, cost=cost, left=left, **money),
+                self.tr_parents("cashout_parents_title"),
+                self.tr_parents(
+                    "cashout_parents", label=label, cost=cost, left=left, **money
+                ),
             )
             await self._notify(
                 CONF_NOTIFY_KID,
-                self.tr("cashout_kid_title"),
-                self.tr("cashout_kid", **money),
+                self.tr_kid("cashout_kid_title"),
+                self.tr_kid("cashout_kid", **money),
             )
             await self._send(notices)
             return
         await self._log(self.tr("redeemed_log", label=label, cost=cost, left=left))
         await self._notify(
             CONF_NOTIFY_PARENTS,
-            self.tr("redeemed_parents_title"),
-            self.tr("redeemed_parents", label=label, cost=cost, left=left),
+            self.tr_parents("redeemed_parents_title"),
+            self.tr_parents("redeemed_parents", label=label, cost=cost, left=left),
         )
         await self._notify(
             CONF_NOTIFY_KID,
-            self.tr("redeemed_kid_title"),
-            self.tr("redeemed_kid", label=label, left=left),
+            self.tr_kid("redeemed_kid_title"),
+            self.tr_kid("redeemed_kid", label=label, left=left),
         )
         await self._send(notices)
 
@@ -845,6 +918,7 @@ class ChoresManager:
 
     async def async_close_week(self, scheduled: date | None = None) -> None:
         """Close the week. `scheduled` is the date of the regular 23:59 close it stands in for."""
+        await self._refresh_languages()
         notices: list[tuple[str, str, str]] = []
         group = uuid.uuid4().hex[:12]
         async with self._lock:
@@ -861,9 +935,12 @@ class ChoresManager:
                 to_bank = 0
             else:
                 to_bank = week
-            note = ""
+            note = note_kid = note_parents = ""
             if bonus:
-                note = self.tr("bonus_banked" if met else "bonus_lost", bonus=bonus)
+                key = "bonus_banked" if met else "bonus_lost"
+                note = self.tr(key, bonus=bonus)
+                note_kid = self.tr_kid(key, bonus=bonus)
+                note_parents = self.tr_parents(key, bonus=bonus)
             self.data["bank"] = self.bank + to_bank
             bank = self.bank
             self.data["week"] = 0
@@ -895,22 +972,22 @@ class ChoresManager:
         await self._log(self.tr("week_log", week=week, goal=goal, to_bank=to_bank))
         await self._notify(
             CONF_NOTIFY_KID,
-            self.tr("week_met_title" if met else "week_over_title"),
-            self.tr("week_kid", week=week, goal=goal, to_bank=to_bank, bank=bank)
-            + (f" {note}" if note else ""),
+            self.tr_kid("week_met_title" if met else "week_over_title"),
+            self.tr_kid("week_kid", week=week, goal=goal, to_bank=to_bank, bank=bank)
+            + (f" {note_kid}" if note_kid else ""),
         )
         await self._notify(
             CONF_NOTIFY_PARENTS,
-            self.tr("week_parents_title"),
-            self.tr(
+            self.tr_parents("week_parents_title"),
+            self.tr_parents(
                 "week_parents",
                 week=week,
                 goal=goal,
                 to_bank=to_bank,
                 bank=bank,
-                result=self.tr("goal_met" if met else "goal_missed"),
+                result=self.tr_parents("goal_met" if met else "goal_missed"),
             )
-            + (f" {note}" if note else ""),
+            + (f" {note_parents}" if note_parents else ""),
         )
         await self._send(notices)
 
@@ -944,6 +1021,7 @@ class ChoresManager:
 
     async def async_revert(self, entry_id: str) -> None:
         """Revert one change from the history, whenever it was made."""
+        await self._refresh_languages()
         async with self._lock:
             entry = next((e for e in self.history if e.get("id") == entry_id), None)
             if entry is None:
@@ -991,8 +1069,8 @@ class ChoresManager:
         await self._log(self.tr("undo_log", label=label))
         await self._notify(
             CONF_NOTIFY_PARENTS,
-            self.tr("undo_parents_title"),
-            self.tr("undo_parents", label=label, bank=self.bank),
+            self.tr_parents("undo_parents_title"),
+            self.tr_parents("undo_parents", label=label, bank=self.bank),
         )
 
     # ------------------------------------------------------------------

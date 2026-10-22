@@ -26,11 +26,15 @@ CONF_MEDALS = "medals_enabled"  # streaks and medals on/off
 CONF_MEDALS_GRACE = "medals_grace"  # forgive one missed day per week in a day streak
 CONF_MEDALS_NOTIFY = "medals_notify"  # notify when a medal is earned
 CONF_MEDAL_RULES = "medal_rules"  # {medal id: {"at": n, "bonus": points}}, overrides of the catalogue
+CONF_LANGUAGE_KID = "language_kid"  # notification language for the child: "auto" or a language code
+CONF_LANGUAGE_PARENTS = "language_parents"  # same, for the parents
 CONF_CURRENCY = "currency"  # wallet currency label, e.g. "kr"
 CONF_NOTIFY_KID = "notify_kid"  # extra notify service names for the child
 CONF_NOTIFY_PARENTS = "notify_parents"  # extra notify service names for parents
 CONF_KID_PERSONS = "kid_persons"  # person entity ids
 CONF_PARENT_PERSONS = "parent_persons"  # person entity ids
+
+LANGUAGE_AUTO = "auto"  # the language of the person's Home Assistant profile, else the system language
 
 WEEKEND_NIGHTS = (4, 5)  # weekday() of Friday and Saturday: no school the next day
 
@@ -51,6 +55,8 @@ DEFAULT_OPTIONS = {
     CONF_CHORE_IDS: {},
     CONF_REWARDS: {},
     CONF_REWARD_PAYOUT: {},
+    CONF_LANGUAGE_KID: "auto",
+    CONF_LANGUAGE_PARENTS: "auto",
     CONF_MEDALS: False,
     CONF_MEDALS_GRACE: False,
     CONF_MEDALS_NOTIFY: True,
