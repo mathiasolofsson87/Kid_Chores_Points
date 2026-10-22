@@ -532,12 +532,17 @@ class ChoresManager:
         None if none is set or they disagree (e.g. two parents with different languages).
         """
         languages: set[str] = set()
+        if not self._user_ids(persons):
+            _LOGGER.debug("No Home Assistant user is linked to %s", persons)
         for user_id in self._user_ids(persons):
             try:
                 store = await async_user_store(self.hass, user_id)
             except Exception:  # noqa: BLE001
+                _LOGGER.debug("Could not read the profile of user %s", user_id, exc_info=True)
                 continue
             value = store.data.get("language")
+            if not value:
+                _LOGGER.debug("User %s has no language saved in their profile", user_id)
             language = value.get("language") if isinstance(value, dict) else value
             if isinstance(language, str) and language:
                 languages.add(language.split("-")[0].lower())
@@ -559,6 +564,7 @@ class ChoresManager:
             self._langs[role] = (
                 language if language in MESSAGES else self.hass.config.language
             )
+            _LOGGER.debug("Notification language for %s: %s", role, self._langs[role])
 
     def _chore_for_event(self, data: Any) -> str | None:
         """The chore a completed Maintenance Supporter task belongs to.

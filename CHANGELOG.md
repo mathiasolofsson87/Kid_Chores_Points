@@ -2,6 +2,11 @@
 
 All notable changes to Kid Chores & Points. Versions match the git tags and the GitHub releases.
 
+## Unreleased
+
+### Changed
+- Documented that *Automatic* notification language needs a language saved in the person's Home Assistant profile (picked explicitly in Profile → Language); a profile that only follows the browser falls back to the system language. Debug logging now says why a notification language was chosen.
+
 ## 1.7.2 – 2026-10-22
 
 ### Changed
