@@ -170,3 +170,38 @@ test("without a tracker the cards say so", async () => {
   const card = await mount(win, "kid-chores-todo-card", {}, makeHass());
   assert.match(card.shadowRoot.textContent, /No Kid Chores & Points tracker found/);
 });
+
+// ---------------------------------------------------------------------
+// Rewards and wallet cards
+// ---------------------------------------------------------------------
+test("rewards card lists affordable rewards and redeems after confirming", async () => {
+  const hass = makeHass();
+  hass.states["binary_sensor.can_afford_tv"] = {
+    state: "on",
+    attributes: { reward: "TV time", cost: 10, bank: 25, payout: 0, currency: "kr", entry_id: "entry-1" },
+  };
+  hass.entities["binary_sensor.can_afford_tv"] = { platform: "kid_chores_points", device_id: "dev1" };
+  const card = await mount(win, "kid-chores-rewards-card", {}, hass);
+  assert.match(card.shadowRoot.textContent, /TV time/);
+  card.shadowRoot.querySelector(".row[data-id]").click();
+  card.shadowRoot.querySelector('[data-act="yes"]').click();
+  assert.equal(hass.calls[0].service, "redeem");
+});
+
+test("wallet card shows the balance and recent movements", async () => {
+  const history = [
+    { t: "2026-10-21T10:00:00+00:00", type: "redeem", label: "Pocket money", amount: 50, points: -50 },
+    { t: "2026-10-20T10:00:00+00:00", type: "adjust", target: "wallet", label: "Gift", amount: 20 },
+  ];
+  const hass = makeHass({
+    sensors: {
+      wallet: { state: "70", attributes: { currency: "kr" } },
+      points_history: { state: "2", attributes: { history } },
+    },
+  });
+  const card = await mount(win, "kid-chores-wallet-card", {}, hass);
+  const text = card.shadowRoot.textContent;
+  assert.match(text, /70 kr/);
+  assert.match(text, /Pocket money/);
+  assert.match(text, /Gift/);
+});

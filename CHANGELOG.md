@@ -2,6 +2,11 @@
 
 All notable changes to Kid Chores & Points. Versions match the git tags and the GitHub releases.
 
+## 1.6.1 – 2026-10-22
+
+### Fixed
+- The Rewards card showed nothing after 1.6.0 (a missing import in the new card modules). Added tests for the Rewards and Wallet cards.
+
 ## 1.6.0 – 2026-10-21
 
 ### Added

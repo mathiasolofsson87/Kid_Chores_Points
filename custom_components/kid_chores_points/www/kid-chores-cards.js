@@ -1,7 +1,7 @@
 /* GENERATED FILE - do not edit. Source: frontend/src, build: npm run build. */
 (() => {
   // frontend/src/text.js
-  var KCP_TEXT2 = {
+  var KCP_TEXT = {
     en: {
       title: "Redeem points",
       subtitle: "You have {n} points in the bank",
@@ -159,7 +159,7 @@
   var kcpEsc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   var kcpT = (hass, key, vars = {}) => {
     const lang = (hass?.language || "en").slice(0, 2);
-    let s = (KCP_TEXT2[lang] || KCP_TEXT2.en)[key];
+    let s = (KCP_TEXT[lang] || KCP_TEXT.en)[key];
     for (const [k, v] of Object.entries(vars)) s = s.replace(`{${k}}`, v);
     return s;
   };

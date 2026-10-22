@@ -1,4 +1,5 @@
 import { kcpIcon, kcpEsc } from "../helpers.js";
+import { KCP_TEXT } from "../text.js";
 
 class KidChoresRewardsCard extends HTMLElement {
   constructor() {
