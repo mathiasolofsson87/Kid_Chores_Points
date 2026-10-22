@@ -15,7 +15,7 @@ Suggested order: 1 + 2, then 3, then 13, then 5 and 6.
 
 - [x] 5. **Undo.** (done: `undo` service and an Undo button on the History card; steps back up to 10 changes, not across a week close) Revert a mistaken completion or redemption, e.g. a revert action on History card entries.
 - [ ] 6. **Parent approval mode.** Optional: a "Done" tap goes to pending and a parent confirms it via an actionable notification.
-- [ ] 7. **Streaks and badges.** E.g. 7 days in a row, or all chores every day of the week, with an optional point bonus.
+- [x] 7. **Streaks and badges.** (done as streaks and medals: day and week streaks, 18 medals, Medals card; see `CHANGELOG.md` 1.7.0) E.g. 7 days in a row, or all chores every day of the week, with an optional point bonus.
 - [ ] 8. **Per-chore schedules.** Chores that only count on certain weekdays; different goals for school weeks and holidays.
 - [ ] 9. **Wallet payout request.** Child taps "request payout", the parent gets an actionable notification, and confirming runs the `adjust_wallet` deduction.
 - [ ] 10. **Weekly summary to parents** with per-chore completion counts, not just the points result.

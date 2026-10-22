@@ -14,6 +14,7 @@ from homeassistant.components.sensor import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .const import CONF_MEDALS_GRACE
 from .entity import ChoresEntity
 from .manager import ChoresManager
 
@@ -136,6 +137,55 @@ SENSORS: tuple[ChoresSensorDescription, ...] = (
         },
     ),
     ChoresSensorDescription(
+        key="day_streak",
+        name="Day streak",
+        icon="mdi:fire",
+        native_unit_of_measurement="days",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda m: m.day_streak(),
+        attrs_fn=lambda m: {
+            "enabled": m.medals_on,
+            "best": m.medal_data["best_day"],
+            "at_risk": m.streak_at_risk(),
+            "grace": bool(m.opt(CONF_MEDALS_GRACE)),
+            "next": m.next_medal("day"),
+        },
+    ),
+    ChoresSensorDescription(
+        key="week_streak",
+        name="Week streak",
+        icon="mdi:trophy-outline",
+        native_unit_of_measurement="weeks",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda m: m.medal_data["week_streak"],
+        attrs_fn=lambda m: {
+            "enabled": m.medals_on,
+            "best": m.medal_data["best_week"],
+            "next": m.next_medal("week"),
+        },
+    ),
+    ChoresSensorDescription(
+        key="medals",
+        name="Medals",
+        icon="mdi:medal",
+        value_fn=lambda m: len(m.medal_data["earned"]),
+        attrs_fn=lambda m: {"enabled": m.medals_on, "medals": m.medal_list()},
+    ),
+    ChoresSensorDescription(
+        key="chores_done",
+        name="Chores done",
+        icon="mdi:check-all",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda m: m.medal_data["chores_done"],
+    ),
+    ChoresSensorDescription(
+        key="bonus_chores_done",
+        name="Bonus chores done",
+        icon="mdi:star-plus-outline",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda m: m.medal_data["bonus_done"],
+    ),
+    ChoresSensorDescription(
         key="last_week_result",
         name="Last week result",
         icon="mdi:history",
@@ -153,7 +203,7 @@ async def async_setup_entry(
 
 class ChoresSensor(ChoresEntity, SensorEntity):
     entity_description: ChoresSensorDescription
-    _unrecorded_attributes = frozenset({"history"})
+    _unrecorded_attributes = frozenset({"history", "medals"})
 
     def __init__(self, manager: ChoresManager, description: ChoresSensorDescription):
         super().__init__(manager, description.key)

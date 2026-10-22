@@ -23,6 +23,7 @@
           "bonus": "Bonussysslor",
           "rewards": "Belöningar",
           "settings": "Mål, regel & valuta",
+          "medals": "Serier & medaljer",
           "bedtime": "Läggdagspåminnelse",
           "notifications": "Notiser",
           "finish": "Klar"
@@ -192,11 +193,95 @@
           "bedtime_weekend": "Läggdags på fredagar och lördagar. Valfritt; lämna tomt för att använda läggdags för skolkvällar varje kväll.",
           "bedtime_lead": "Minuter före läggdags, 5–240."
         }
+      },
+      "medals": {
+        "title": "Serier & medaljer",
+        "description": "Serier och medaljer för barnet. En **dagsserie** räknar dagar i rad då alla obligatoriska sysslor är gjorda, en **veckoserie** räknar veckor i rad då veckomålet nås. Medaljer kan också räkna sysslor och bonussysslor. En medalj kan ge bonuspoäng (högst 50) direkt i banken. Räkningen startar när du slår på funktionen.",
+        "menu_options": {
+          "medals_settings": "Inställningar",
+          "medals_day": "Medaljer för dagsserier",
+          "medals_week": "Medaljer för veckoserier",
+          "medals_chores": "Medaljer för gjorda sysslor",
+          "medals_bonus": "Medaljer för bonussysslor",
+          "init": "Tillbaka"
+        }
+      },
+      "medals_settings": {
+        "title": "Inställningar för serier & medaljer",
+        "data": {
+          "medals_enabled": "Slå på serier och medaljer",
+          "medals_grace": "Förlåt en missad dag per vecka",
+          "medals_notify": "Notifiera när en medalj delas ut"
+        },
+        "data_description": {
+          "medals_enabled": "Räkningen startar när du slår på funktionen; tidigare sysslor räknas inte. Om du slår av den pausas räkningen och medaljerna döljs, men det som är intjänat finns kvar.",
+          "medals_grace": "En dagsserie klarar en missad dag i varje vecka. Den missade dagen räknas inte med.",
+          "medals_notify": "Skicka en notis till barnet och föräldrarna när en medalj delas ut."
+        }
+      },
+      "medals_day": {
+        "title": "Medaljer för dagsserier",
+        "description": "Ställ in hur långt barnet ska nå för varje medalj och hur många bonuspoäng den ger (0–50, sätts in i banken). Varje mål måste vara högre än det ovanför. Medaljer som redan är intjänade finns kvar.",
+        "data": {
+          "day_3_at": "Lilla Grodden: dagar i rad",
+          "day_3_bonus": "Lilla Grodden: bonuspoäng",
+          "day_7_at": "Supersjuan: dagar i rad",
+          "day_7_bonus": "Supersjuan: bonuspoäng",
+          "day_14_at": "Eldsjälen: dagar i rad",
+          "day_14_bonus": "Eldsjälen: bonuspoäng",
+          "day_30_at": "Ostoppbar!: dagar i rad",
+          "day_30_bonus": "Ostoppbar!: bonuspoäng"
+        }
+      },
+      "medals_week": {
+        "title": "Medaljer för veckoserier",
+        "description": "Ställ in hur långt barnet ska nå för varje medalj och hur många bonuspoäng den ger (0–50, sätts in i banken). Varje mål måste vara högre än det ovanför. Medaljer som redan är intjänade finns kvar.",
+        "data": {
+          "week_10_at": "Fullträff!: veckor i rad",
+          "week_10_bonus": "Fullträff!: bonuspoäng",
+          "week_12_at": "Målmaskinen: veckor i rad",
+          "week_12_bonus": "Målmaskinen: bonuspoäng",
+          "week_16_at": "Bergstoppen: veckor i rad",
+          "week_16_bonus": "Bergstoppen: bonuspoäng",
+          "week_20_at": "Megamästaren: veckor i rad",
+          "week_20_bonus": "Megamästaren: bonuspoäng"
+        }
+      },
+      "medals_chores": {
+        "title": "Medaljer för gjorda sysslor",
+        "description": "Ställ in hur långt barnet ska nå för varje medalj och hur många bonuspoäng den ger (0–50, sätts in i banken). Varje mål måste vara högre än det ovanför. Medaljer som redan är intjänade finns kvar.",
+        "data": {
+          "chores_25_at": "Städkompisen: sysslor gjorda",
+          "chores_25_bonus": "Städkompisen: bonuspoäng",
+          "chores_100_at": "Superstjärnan: sysslor gjorda",
+          "chores_100_bonus": "Superstjärnan: bonuspoäng",
+          "chores_250_at": "Stjärnsamlaren: sysslor gjorda",
+          "chores_250_bonus": "Stjärnsamlaren: bonuspoäng",
+          "chores_500_at": "Kunglig hjälpare: sysslor gjorda",
+          "chores_500_bonus": "Kunglig hjälpare: bonuspoäng",
+          "chores_1000_at": "Superhjälten: sysslor gjorda",
+          "chores_1000_bonus": "Superhjälten: bonuspoäng"
+        }
+      },
+      "medals_bonus": {
+        "title": "Medaljer för bonussysslor",
+        "description": "Ställ in hur långt barnet ska nå för varje medalj och hur många bonuspoäng den ger (0–50, sätts in i banken). Varje mål måste vara högre än det ovanför. Medaljer som redan är intjänade finns kvar.",
+        "data": {
+          "bonus_10_at": "Snabba extra: bonussysslor gjorda",
+          "bonus_10_bonus": "Snabba extra: bonuspoäng",
+          "bonus_50_at": "Blixtattack!: bonussysslor gjorda",
+          "bonus_50_bonus": "Blixtattack!: bonuspoäng",
+          "bonus_100_at": "Raketstart!: bonussysslor gjorda",
+          "bonus_100_bonus": "Raketstart!: bonuspoäng",
+          "bonus_250_at": "Rymdlegenden: bonussysslor gjorda",
+          "bonus_250_bonus": "Rymdlegenden: bonuspoäng"
+        }
       }
     },
     "error": {
       "name_exists": "Det finns redan ett objekt med det här namnet. Använd Redigera för att ändra det.",
-      "lead_too_long": "Påminnelsen skulle hamna före midnatt. Välj en kortare tid eller senare läggdags."
+      "lead_too_long": "Påminnelsen skulle hamna före midnatt. Välj en kortare tid eller senare läggdags.",
+      "medal_order": "Varje medalj behöver ett högre mål än den ovanför."
     }
   },
   "selector": {

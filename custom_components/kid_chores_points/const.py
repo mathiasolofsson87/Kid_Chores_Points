@@ -22,6 +22,10 @@ CONF_HISTORY_LIMIT = "history_limit"  # how many history entries are kept
 CONF_BEDTIME = "bedtime"  # "HH:MM", empty = no reminder
 CONF_BEDTIME_WEEKEND = "bedtime_weekend"  # "HH:MM" for Friday and Saturday nights, empty = same
 CONF_BEDTIME_LEAD = "bedtime_lead"  # minutes before bedtime to send the reminder
+CONF_MEDALS = "medals_enabled"  # streaks and medals on/off
+CONF_MEDALS_GRACE = "medals_grace"  # forgive one missed day per week in a day streak
+CONF_MEDALS_NOTIFY = "medals_notify"  # notify when a medal is earned
+CONF_MEDAL_RULES = "medal_rules"  # {medal id: {"at": n, "bonus": points}}, overrides of the catalogue
 CONF_CURRENCY = "currency"  # wallet currency label, e.g. "kr"
 CONF_NOTIFY_KID = "notify_kid"  # extra notify service names for the child
 CONF_NOTIFY_PARENTS = "notify_parents"  # extra notify service names for parents
@@ -47,6 +51,10 @@ DEFAULT_OPTIONS = {
     CONF_CHORE_IDS: {},
     CONF_REWARDS: {},
     CONF_REWARD_PAYOUT: {},
+    CONF_MEDALS: False,
+    CONF_MEDALS_GRACE: False,
+    CONF_MEDALS_NOTIFY: True,
+    CONF_MEDAL_RULES: {},
     CONF_CURRENCY: "kr",
     CONF_HISTORY_LIMIT: 300,
     CONF_BEDTIME: "",
@@ -61,6 +69,9 @@ DEFAULT_OPTIONS = {
 HISTORY_LIMIT = 300  # default number of entries kept in the points history
 HISTORY_LIMIT_MIN = 50
 HISTORY_LIMIT_MAX = 1000  # the whole history is an attribute of one sensor
+
+MEDAL_BONUS_MAX = 50  # most bonus points one medal can pay
+PERFECT_DAYS_KEPT = 400  # days of streak history kept (a day-streak medal can't need more)
 
 SIGNAL_UPDATE = f"{DOMAIN}_update_{{}}"
 

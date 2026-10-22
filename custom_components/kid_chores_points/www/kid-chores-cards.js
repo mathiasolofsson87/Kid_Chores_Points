@@ -69,7 +69,30 @@
       adjust_amount: "Amount (use - to deduct)",
       w_recent: "Recent activity",
       w_empty: "No money yet. Cash out points to fill your wallet!",
-      h_cashout: "Cashed out"
+      h_cashout: "Cashed out",
+      h_medal: "Medal earned",
+      unit_day_1: "day",
+      unit_day_n: "days",
+      unit_week_1: "week",
+      unit_week_n: "weeks",
+      streak_next: "{n} more for \u201C{name}\u201D",
+      streak_risk: "Finish today's chores to keep your {n}-day streak!",
+      streak_best: "Best: {n}",
+      medals_title: "Medals",
+      medals_count: "{n} of {total} medals",
+      medals_off: "Streaks and medals are switched off. Turn them on under Configure \u2192 Streaks & medals.",
+      m_streaks: "Streaks",
+      m_chores: "Chores",
+      m_bonus: "Bonus chores",
+      m_new: "NEW",
+      m_show_all: "Show all medals ({n} more)",
+      m_show_less: "Show fewer medals",
+      m_earned: "Earned {d}",
+      m_not_yet: "Not yet",
+      pu_day: "days",
+      pu_week: "weeks",
+      pu_chores: "chores",
+      pu_bonus: "bonus chores"
     },
     sv: {
       title: "L\xF6s in po\xE4ng",
@@ -138,7 +161,30 @@
       adjust_amount: "Belopp (anv\xE4nd - f\xF6r avdrag)",
       w_recent: "Senaste h\xE4ndelser",
       w_empty: "Inga pengar \xE4n. V\xE4xla po\xE4ng f\xF6r att fylla pl\xE5nboken!",
-      h_cashout: "Utv\xE4xlat"
+      h_cashout: "Utv\xE4xlat",
+      h_medal: "Medalj intj\xE4nad",
+      unit_day_1: "dag",
+      unit_day_n: "dagar",
+      unit_week_1: "vecka",
+      unit_week_n: "veckor",
+      streak_next: "{n} till \u201D{name}\u201D",
+      streak_risk: "G\xF6r klart dagens sysslor f\xF6r att beh\xE5lla din serie p\xE5 {n} dagar!",
+      streak_best: "Rekord: {n}",
+      medals_title: "Medaljer",
+      medals_count: "{n} av {total} medaljer",
+      medals_off: "Serier och medaljer \xE4r avst\xE4ngda. Sl\xE5 p\xE5 dem under Konfigurera \u2192 Serier & medaljer.",
+      m_streaks: "Serier",
+      m_chores: "Sysslor",
+      m_bonus: "Bonussysslor",
+      m_new: "NY",
+      m_show_all: "Visa alla medaljer ({n} till)",
+      m_show_less: "Visa f\xE4rre medaljer",
+      m_earned: "Intj\xE4nad {d}",
+      m_not_yet: "Inte \xE4n",
+      pu_day: "dagar",
+      pu_week: "veckor",
+      pu_chores: "sysslor",
+      pu_bonus: "bonussysslor"
     }
   };
 
@@ -181,6 +227,7 @@
     for (const f of found) if (f.device === chosen) out[f.st.attributes.key] = f.st;
     return out;
   };
+  var kcpCount = (hass, unit, n) => `${n} ${kcpT(hass, `unit_${unit}_${n === 1 ? "1" : "n"}`)}`;
 
   // frontend/src/cards/rewards.js
   var KidChoresRewardsCard = class extends HTMLElement {
@@ -417,6 +464,8 @@
         S?.bonus_week?.attributes.enabled,
         S?.wallet?.attributes.enabled,
         S?.wallet?.attributes.currency,
+        S?.day_streak?.attributes,
+        S?.week_streak?.attributes,
         h.language,
         this._config,
         chips
@@ -436,8 +485,24 @@
       const tile = (icon, color, primary, secondary, cls = "tile") => `
       <div class="${cls}" style="--c:${color}">
         <div class="ico"><ha-icon icon="${icon}"></ha-icon></div>
-        <div class="txt"><div class="primary">${kcpEsc(primary)}</div><div class="secondary">${kcpEsc(secondary)}</div></div>
+        <div class="txt"><div class="primary">${kcpEsc(primary)}</div>${[].concat(secondary).map((l) => `<div class="secondary">${kcpEsc(l)}</div>`).join("")}</div>
       </div>`;
+      let streaks = "";
+      const day = S.day_streak;
+      if (day?.attributes.enabled) {
+        const week = S.week_streak;
+        const dayNext = day.attributes.next;
+        const weekNext = week?.attributes.next;
+        const weekCloser = weekNext && (!dayNext || weekNext.remaining * 7 < dayNext.remaining);
+        const [src, unit, next] = weekCloser ? [week, "week", weekNext] : [day, "day", dayNext];
+        const count = parseInt(src.state, 10) || 0;
+        const lines = [
+          next ? kcpT(h, "streak_next", { n: next.remaining, name: next.name }) : kcpT(h, "streak_best", { n: src.attributes.best })
+        ];
+        const risk = day.attributes.at_risk;
+        if (risk) lines.push(kcpT(h, "streak_risk", { n: parseInt(day.state, 10) || 0 }));
+        streaks = tile("mdi:trophy-outline", risk ? "#ff9f0a" : "#bf5af2", kcpCount(h, unit, count), lines, "wide");
+      }
       this.shadowRoot.innerHTML = `
       <style>
         ha-card { padding: 16px; }
@@ -487,6 +552,7 @@
           ${tile("mdi:flag-variant", "#0a84ff", `${n("points_to_goal")} p`, kcpT(h, "to_goal"))}
           ${tile("mdi:calendar-check", "#30d158", `${n("points_today")} p`, kcpT(h, "today"))}
           ${tile("mdi:piggy-bank", "#ff9f0a", `${n("points_bank")} p`, kcpT(h, "bank"))}
+          ${streaks}
           ${S.wallet?.attributes.enabled ? tile("mdi:wallet", "#64d2ff", `${n("wallet")} ${S.wallet.attributes.currency}`, kcpT(h, "wallet_title"), "wide") : ""}
           ${showLast ? `<div class="wide" style="--c:var(--disabled-text-color,#9e9e9e)">
                   <div class="ico"><ha-icon icon="mdi:history"></ha-icon></div>
@@ -718,7 +784,8 @@
     adjust: ["mdi:tune-vertical", "#0a84ff"],
     wallet: ["mdi:wallet", "#64d2ff"],
     week_close: ["mdi:flag-checkered", "#bf5af2"],
-    undo: ["mdi:undo-variant", "#8e8e93"]
+    undo: ["mdi:undo-variant", "#8e8e93"],
+    medal: ["mdi:medal", "#ffd60a"]
   };
   var KidChoresHistoryCard = class extends HTMLElement {
     constructor() {
@@ -810,7 +877,7 @@
             ${note}
             ${balances ? `<div class="sub">${kcpEsc(kcpT(h, r.week_bonus ? "h_balances_bonus" : "h_balances", { w: r.week, x: r.week_bonus, b: r.bank }) + (r.wallet !== void 0 && S?.wallet?.attributes.enabled ? ` \xB7 ${kcpT(h, "wallet_title")} ${r.wallet} ${cur}` : ""))}</div>` : ""}
           </div>
-          <div class="pts ${cls}">${sign}${pts} ${kcpEsc(unit)}${kcpEsc(where)}${gain ? `<div class="gain">${kcpEsc(gain)}</div>` : ""}</div>
+          <div class="pts ${cls}">${r.type === "medal" && !pts ? "" : `${sign}${pts} ${kcpEsc(unit)}${kcpEsc(where)}`}${gain ? `<div class="gain">${kcpEsc(gain)}</div>` : ""}</div>
           ${side}
         </div>`;
       }
@@ -1358,6 +1425,204 @@
     type: "kid-chores-wallet-card",
     name: "Kid Chores & Points \u2013 Wallet",
     description: "The child's wallet: current money and recent cash-outs and adjustments.",
+    preview: true
+  });
+
+  // frontend/src/medal-icons.js
+  var KCP_MEDAL_SVG = {
+    day_3: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="__S__" height="__S__" aria-hidden="true" focusable="false"><defs><linearGradient id="m__U__r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f0b684"/><stop offset="1" stop-color="#9a5424"/></linearGradient><radialGradient id="m__U__f" cx="0.35" cy="0.3" r="0.9"><stop offset="0" stop-color="#fbdcc0"/><stop offset="1" stop-color="#e2955a"/></radialGradient></defs><polygon points="17,3 30,3 37,27 24,27" fill="#f2603a"/><polygon points="34,3 47,3 40,27 27,27" fill="#c23a1c"/><circle cx="32" cy="38" r="21" fill="url(#m__U__r)" stroke="#6b3512" stroke-opacity=".35" stroke-width="1"/><circle cx="32" cy="38" r="17.5" fill="url(#m__U__f)" stroke="#fff" stroke-opacity=".55" stroke-width="1"/><path d="M17.9 32.9A15 15 0 0 1 26.9 23.9" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.2" stroke-linecap="round"/><g transform="translate(0 1)"><path d="M32 49V37" stroke="#6b3512" stroke-width="3" stroke-linecap="round" fill="none"/><path d="M32 40C24 40 21.5 33 23 29.5C30.5 29.5 33.5 34 32 40Z" fill="#6b3512"/><path d="M32 37C32 30.5 36 26.5 42.5 26C43.5 32.5 39.5 37.5 32 37Z" fill="#6b3512"/></g></svg>`,
+    day_7: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="__S__" height="__S__" aria-hidden="true" focusable="false"><defs><linearGradient id="m__U__r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f4f7fb"/><stop offset="1" stop-color="#8a95a3"/></linearGradient><radialGradient id="m__U__f" cx="0.35" cy="0.3" r="0.9"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#cdd5df"/></radialGradient></defs><polygon points="17,3 30,3 37,27 24,27" fill="#f2603a"/><polygon points="34,3 47,3 40,27 27,27" fill="#c23a1c"/><circle cx="32" cy="38" r="21" fill="url(#m__U__r)" stroke="#465163" stroke-opacity=".35" stroke-width="1"/><circle cx="32" cy="38" r="17.5" fill="url(#m__U__f)" stroke="#fff" stroke-opacity=".55" stroke-width="1"/><path d="M17.9 32.9A15 15 0 0 1 26.9 23.9" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.2" stroke-linecap="round"/><g transform="translate(0 1)"><rect x="21.5" y="27" width="21" height="20" rx="3.5" fill="#ffffff" stroke="#465163" stroke-width="2.4"/><path d="M21.5 31a3.5 3.5 0 0 1 3.5-3.5h14a3.5 3.5 0 0 1 3.5 3.5V33h-21Z" fill="#465163"/><path d="M27.5 24v5M36.5 24v5" stroke="#465163" stroke-width="2.6" stroke-linecap="round"/><path d="M27.2 37.6h9.6l-5.2 8.2" stroke="#465163" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/></g></svg>`,
+    day_14: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="__S__" height="__S__" aria-hidden="true" focusable="false"><defs><linearGradient id="m__U__r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe27a"/><stop offset="1" stop-color="#c98a0a"/></linearGradient><radialGradient id="m__U__f" cx="0.35" cy="0.3" r="0.9"><stop offset="0" stop-color="#fff4c2"/><stop offset="1" stop-color="#f5c542"/></radialGradient></defs><polygon points="17,3 30,3 37,27 24,27" fill="#f2603a"/><polygon points="34,3 47,3 40,27 27,27" fill="#c23a1c"/><circle cx="32" cy="38" r="21" fill="url(#m__U__r)" stroke="#7a4a00" stroke-opacity=".35" stroke-width="1"/><circle cx="32" cy="38" r="17.5" fill="url(#m__U__f)" stroke="#fff" stroke-opacity=".55" stroke-width="1"/><path d="M17.9 32.9A15 15 0 0 1 26.9 23.9" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.2" stroke-linecap="round"/><g transform="translate(0 1)"><path d="M32 23.5C34 30 41.5 32 41.5 40.5C41.5 46.5 37.5 50.5 32 50.5C26.5 50.5 22.5 46.5 22.5 40.5C22.5 36.5 25.5 34 26.5 30C28.5 32 30 33 31 33C31 30 30.5 27 32 23.5Z" fill="#7a4a00"/><path d="M32 49.5C28.8 49.5 26.8 47 26.8 44.3C26.8 41.2 30 40 31 37C34.2 39 37.2 41 37.2 44.3C37.2 47.2 35.2 49.5 32 49.5Z" fill="#fff8d9"/></g></svg>`,
+    day_30: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="__S__" height="__S__" aria-hidden="true" focusable="false"><defs><linearGradient id="m__U__r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d4f6ff"/><stop offset="1" stop-color="#2a86c8"/></linearGradient><radialGradient id="m__U__f" cx="0.35" cy="0.3" r="0.9"><stop offset="0" stop-color="#f4fdff"/><stop offset="1" stop-color="#7fd6f4"/></radialGradient></defs><polygon points="17,3 30,3 37,27 24,27" fill="#f2603a"/><polygon points="34,3 47,3 40,27 27,27" fill="#c23a1c"/><path d="M54 15.5Q54 20 58.5 20Q54 20 54 24.5Q54 20 49.5 20Q54 20 54 15.5Z" fill="#4cc2ee"/><path d="M58.5 28.4Q58.5 31 61.1 31Q58.5 31 58.5 33.6Q58.5 31 55.9 31Q58.5 31 58.5 28.4Z" fill="#4cc2ee"/><path d="M8 20.6Q8 24 11.4 24Q8 24 8 27.4Q8 24 4.6 24Q8 24 8 20.6Z" fill="#4cc2ee"/><circle cx="32" cy="38" r="21" fill="url(#m__U__r)" stroke="#0d4572" stroke-opacity=".35" stroke-width="1"/><circle cx="32" cy="38" r="17.5" fill="url(#m__U__f)" stroke="#fff" stroke-opacity=".55" stroke-width="1"/><path d="M17.9 32.9A15 15 0 0 1 26.9 23.9" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.2" stroke-linecap="round"/><g transform="translate(0 1)"><path d="M33.5 26.5C27 31.5 22 39.5 20 50C30.5 47.5 38.5 42.5 43.5 35.5Z" fill="#0d4572" fill-opacity=".78"/><circle cx="38.5" cy="31" r="8" fill="#0d4572"/><circle cx="36.2" cy="28.8" r="2.3" fill="#ecfaff"/><path d="M28.5 39.5L24 46M33 41.5L28 47" stroke="#ecfaff" stroke-width="1.5" stroke-linecap="round"/></g></svg>`,
+    week_10: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="__S__" height="__S__" aria-hidden="true" focusable="false"><defs><linearGradient id="m__U__r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f0b684"/><stop offset="1" stop-color="#9a5424"/></linearGradient><radialGradient id="m__U__f" cx="0.35" cy="0.3" r="0.9"><stop offset="0" stop-color="#fbdcc0"/><stop offset="1" stop-color="#e2955a"/></radialGradient></defs><polygon points="17,3 30,3 37,27 24,27" fill="#f2603a"/><polygon points="34,3 47,3 40,27 27,27" fill="#c23a1c"/><circle cx="32" cy="38" r="21" fill="url(#m__U__r)" stroke="#6b3512" stroke-opacity=".35" stroke-width="1"/><circle cx="32" cy="38" r="17.5" fill="url(#m__U__f)" stroke="#fff" stroke-opacity=".55" stroke-width="1"/><path d="M17.9 32.9A15 15 0 0 1 26.9 23.9" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.2" stroke-linecap="round"/><g transform="translate(0 1)"><circle cx="32" cy="37" r="12.5" fill="none" stroke="#6b3512" stroke-width="3"/><circle cx="32" cy="37" r="7" fill="none" stroke="#6b3512" stroke-width="3"/><circle cx="32" cy="37" r="2.6" fill="#6b3512"/></g></svg>`,
+    week_12: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="__S__" height="__S__" aria-hidden="true" focusable="false"><defs><linearGradient id="m__U__r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f4f7fb"/><stop offset="1" stop-color="#8a95a3"/></linearGradient><radialGradient id="m__U__f" cx="0.35" cy="0.3" r="0.9"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#cdd5df"/></radialGradient></defs><polygon points="17,3 30,3 37,27 24,27" fill="#f2603a"/><polygon points="34,3 47,3 40,27 27,27" fill="#c23a1c"/><circle cx="32" cy="38" r="21" fill="url(#m__U__r)" stroke="#465163" stroke-opacity=".35" stroke-width="1"/><circle cx="32" cy="38" r="17.5" fill="url(#m__U__f)" stroke="#fff" stroke-opacity=".55" stroke-width="1"/><path d="M17.9 32.9A15 15 0 0 1 26.9 23.9" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.2" stroke-linecap="round"/><g transform="translate(0 1)"><g fill="#465163"><rect x="29.5" y="23.5" width="5" height="27" rx="1.4"/><rect x="29.5" y="23.5" width="5" height="27" rx="1.4" transform="rotate(45 32 37)"/><rect x="29.5" y="23.5" width="5" height="27" rx="1.4" transform="rotate(90 32 37)"/><rect x="29.5" y="23.5" width="5" height="27" rx="1.4" transform="rotate(135 32 37)"/><circle cx="32" cy="37" r="9.6"/></g><circle cx="32" cy="37" r="4" fill="#ffffff"/></g></svg>`,
+    week_16: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="__S__" height="__S__" aria-hidden="true" focusable="false"><defs><linearGradient id="m__U__r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe27a"/><stop offset="1" stop-color="#c98a0a"/></linearGradient><radialGradient id="m__U__f" cx="0.35" cy="0.3" r="0.9"><stop offset="0" stop-color="#fff4c2"/><stop offset="1" stop-color="#f5c542"/></radialGradient></defs><polygon points="17,3 30,3 37,27 24,27" fill="#f2603a"/><polygon points="34,3 47,3 40,27 27,27" fill="#c23a1c"/><circle cx="32" cy="38" r="21" fill="url(#m__U__r)" stroke="#7a4a00" stroke-opacity=".35" stroke-width="1"/><circle cx="32" cy="38" r="17.5" fill="url(#m__U__f)" stroke="#fff" stroke-opacity=".55" stroke-width="1"/><path d="M17.9 32.9A15 15 0 0 1 26.9 23.9" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.2" stroke-linecap="round"/><g transform="translate(0 1)"><path d="M19.5 49L28.5 33.5L32.5 39.5L37.5 31L44.5 49Z" fill="#7a4a00" stroke="#7a4a00" stroke-width="1.6" stroke-linejoin="round"/><path d="M26.5 37L28.5 33.5L31 37.5L29 38.5ZM35.5 34.5L37.5 31L39.5 34.5L37.5 35.5Z" fill="#fff8d9"/><path d="M37.5 31V23.5" stroke="#7a4a00" stroke-width="2" stroke-linecap="round"/><path d="M37.5 24L44 26.2L37.5 28.8Z" fill="#7a4a00" stroke="#7a4a00" stroke-width="1" stroke-linejoin="round"/></g></svg>`,
+    week_20: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="__S__" height="__S__" aria-hidden="true" focusable="false"><defs><linearGradient id="m__U__r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d4f6ff"/><stop offset="1" stop-color="#2a86c8"/></linearGradient><radialGradient id="m__U__f" cx="0.35" cy="0.3" r="0.9"><stop offset="0" stop-color="#f4fdff"/><stop offset="1" stop-color="#7fd6f4"/></radialGradient></defs><polygon points="17,3 30,3 37,27 24,27" fill="#f2603a"/><polygon points="34,3 47,3 40,27 27,27" fill="#c23a1c"/><path d="M54 15.5Q54 20 58.5 20Q54 20 54 24.5Q54 20 49.5 20Q54 20 54 15.5Z" fill="#4cc2ee"/><path d="M58.5 28.4Q58.5 31 61.1 31Q58.5 31 58.5 33.6Q58.5 31 55.9 31Q58.5 31 58.5 28.4Z" fill="#4cc2ee"/><path d="M8 20.6Q8 24 11.4 24Q8 24 8 27.4Q8 24 4.6 24Q8 24 8 20.6Z" fill="#4cc2ee"/><circle cx="32" cy="38" r="21" fill="url(#m__U__r)" stroke="#0d4572" stroke-opacity=".35" stroke-width="1"/><circle cx="32" cy="38" r="17.5" fill="url(#m__U__f)" stroke="#fff" stroke-opacity=".55" stroke-width="1"/><path d="M17.9 32.9A15 15 0 0 1 26.9 23.9" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.2" stroke-linecap="round"/><g transform="translate(0 1)"><path d="M24 38V34.5H20.5C20.5 31 21 28 21.5 26.5H24" fill="none"/><path d="M24.5 27H20.2C20.2 33.5 22.5 35.8 25.8 36.4" stroke="#0d4572" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M39.5 27H43.8C43.8 33.5 41.5 35.8 38.2 36.4" stroke="#0d4572" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M24 24.5H40V32C40 38 36.2 41.5 32 41.5C27.8 41.5 24 38 24 32Z" fill="#0d4572"/><rect x="30" y="41" width="4" height="5.5" fill="#0d4572"/><rect x="25" y="46" width="14" height="4" rx="1.4" fill="#0d4572"/><path d="M28 28.5V32.5" stroke="#ecfaff" stroke-width="2" stroke-linecap="round"/></g></svg>`,
+    chores_25: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="__S__" height="__S__" aria-hidden="true" focusable="false"><defs><linearGradient id="m__U__r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f0b684"/><stop offset="1" stop-color="#9a5424"/></linearGradient><radialGradient id="m__U__f" cx="0.35" cy="0.3" r="0.9"><stop offset="0" stop-color="#fbdcc0"/><stop offset="1" stop-color="#e2955a"/></radialGradient></defs><polygon points="17,3 30,3 37,27 24,27" fill="#3b82f6"/><polygon points="34,3 47,3 40,27 27,27" fill="#1f56c4"/><circle cx="32" cy="38" r="21" fill="url(#m__U__r)" stroke="#6b3512" stroke-opacity=".35" stroke-width="1"/><circle cx="32" cy="38" r="17.5" fill="url(#m__U__f)" stroke="#fff" stroke-opacity=".55" stroke-width="1"/><path d="M17.9 32.9A15 15 0 0 1 26.9 23.9" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.2" stroke-linecap="round"/><g transform="translate(0 1)"><path d="M43 23.5L32.5 37.5" stroke="#6b3512" stroke-width="2.8" stroke-linecap="round"/><path d="M28.6 36.6L36.6 41.2C37.8 44.5 37 47.6 35 50.5L22.5 47.5C25 44.6 27 41 28.6 36.6Z" fill="#6b3512" stroke="#6b3512" stroke-width="1.4" stroke-linejoin="round"/><path d="M27.6 39.2L37.2 44.2" stroke="#fdeedd" stroke-width="1.6" stroke-linecap="round"/><path d="M27 45.3L29 48.6M30.6 46.6L32 49.6M34 47.8L34.4 49.8" stroke="#fdeedd" stroke-width="1.4" stroke-linecap="round"/></g></svg>`,
+    chores_100: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="__S__" height="__S__" aria-hidden="true" focusable="false"><defs><linearGradient id="m__U__r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f4f7fb"/><stop offset="1" stop-color="#8a95a3"/></linearGradient><radialGradient id="m__U__f" cx="0.35" cy="0.3" r="0.9"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#cdd5df"/></radialGradient></defs><polygon points="17,3 30,3 37,27 24,27" fill="#3b82f6"/><polygon points="34,3 47,3 40,27 27,27" fill="#1f56c4"/><circle cx="32" cy="38" r="21" fill="url(#m__U__r)" stroke="#465163" stroke-opacity=".35" stroke-width="1"/><circle cx="32" cy="38" r="17.5" fill="url(#m__U__f)" stroke="#fff" stroke-opacity=".55" stroke-width="1"/><path d="M17.9 32.9A15 15 0 0 1 26.9 23.9" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.2" stroke-linecap="round"/><g transform="translate(0 1)"><polygon points="32.00,24.00 35.29,32.97 44.84,33.33 37.33,39.23 39.94,48.42 32.00,43.10 24.06,48.42 26.67,39.23 19.16,33.33 28.71,32.97" fill="#465163" stroke="#465163" stroke-width="1.6" stroke-linejoin="round"/></g></svg>`,
+    chores_250: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="__S__" height="__S__" aria-hidden="true" focusable="false"><defs><linearGradient id="m__U__r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe27a"/><stop offset="1" stop-color="#c98a0a"/></linearGradient><radialGradient id="m__U__f" cx="0.35" cy="0.3" r="0.9"><stop offset="0" stop-color="#fff4c2"/><stop offset="1" stop-color="#f5c542"/></radialGradient></defs><polygon points="17,3 30,3 37,27 24,27" fill="#3b82f6"/><polygon points="34,3 47,3 40,27 27,27" fill="#1f56c4"/><circle cx="32" cy="38" r="21" fill="url(#m__U__r)" stroke="#7a4a00" stroke-opacity=".35" stroke-width="1"/><circle cx="32" cy="38" r="17.5" fill="url(#m__U__f)" stroke="#fff" stroke-opacity=".55" stroke-width="1"/><path d="M17.9 32.9A15 15 0 0 1 26.9 23.9" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.2" stroke-linecap="round"/><g transform="translate(0 1)"><polygon points="32.00,23.50 34.23,29.43 40.56,29.72 35.61,33.67 37.29,39.78 32.00,36.30 26.71,39.78 28.39,33.67 23.44,29.72 29.77,29.43" fill="#7a4a00" stroke="#7a4a00" stroke-width="1.4" stroke-linejoin="round"/><polygon points="23.00,39.30 24.29,42.72 27.95,42.89 25.09,45.18 26.06,48.71 23.00,46.70 19.94,48.71 20.91,45.18 18.05,42.89 21.71,42.72" fill="#7a4a00" stroke="#7a4a00" stroke-width="1.2" stroke-linejoin="round"/><polygon points="41.00,39.30 42.29,42.72 45.95,42.89 43.09,45.18 44.06,48.71 41.00,46.70 37.94,48.71 38.91,45.18 36.05,42.89 39.71,42.72" fill="#7a4a00" stroke="#7a4a00" stroke-width="1.2" stroke-linejoin="round"/></g></svg>`,
+    chores_500: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="__S__" height="__S__" aria-hidden="true" focusable="false"><defs><linearGradient id="m__U__r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d4f6ff"/><stop offset="1" stop-color="#2a86c8"/></linearGradient><radialGradient id="m__U__f" cx="0.35" cy="0.3" r="0.9"><stop offset="0" stop-color="#f4fdff"/><stop offset="1" stop-color="#7fd6f4"/></radialGradient></defs><polygon points="17,3 30,3 37,27 24,27" fill="#3b82f6"/><polygon points="34,3 47,3 40,27 27,27" fill="#1f56c4"/><path d="M54 15.5Q54 20 58.5 20Q54 20 54 24.5Q54 20 49.5 20Q54 20 54 15.5Z" fill="#4cc2ee"/><path d="M58.5 28.4Q58.5 31 61.1 31Q58.5 31 58.5 33.6Q58.5 31 55.9 31Q58.5 31 58.5 28.4Z" fill="#4cc2ee"/><path d="M8 20.6Q8 24 11.4 24Q8 24 8 27.4Q8 24 4.6 24Q8 24 8 20.6Z" fill="#4cc2ee"/><circle cx="32" cy="38" r="21" fill="url(#m__U__r)" stroke="#0d4572" stroke-opacity=".35" stroke-width="1"/><circle cx="32" cy="38" r="17.5" fill="url(#m__U__f)" stroke="#fff" stroke-opacity=".55" stroke-width="1"/><path d="M17.9 32.9A15 15 0 0 1 26.9 23.9" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.2" stroke-linecap="round"/><g transform="translate(0 1)"><path d="M22 44L20 28.5L27 35L32 26L37 35L44 28.5L42 44Z" fill="#0d4572" stroke="#0d4572" stroke-width="1.6" stroke-linejoin="round"/><rect x="22" y="44.5" width="20" height="4.5" rx="1.6" fill="#0d4572"/><circle cx="26.5" cy="40" r="1.8" fill="#ecfaff"/><circle cx="32" cy="40" r="1.8" fill="#ecfaff"/><circle cx="37.5" cy="40" r="1.8" fill="#ecfaff"/></g></svg>`,
+    chores_1000: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="__S__" height="__S__" aria-hidden="true" focusable="false"><defs><linearGradient id="m__U__r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d4f6ff"/><stop offset="1" stop-color="#2a86c8"/></linearGradient><radialGradient id="m__U__f" cx="0.35" cy="0.3" r="0.9"><stop offset="0" stop-color="#f4fdff"/><stop offset="1" stop-color="#7fd6f4"/></radialGradient></defs><polygon points="17,3 30,3 37,27 24,27" fill="#3b82f6"/><polygon points="34,3 47,3 40,27 27,27" fill="#1f56c4"/><path d="M54 15.5Q54 20 58.5 20Q54 20 54 24.5Q54 20 49.5 20Q54 20 54 15.5Z" fill="#4cc2ee"/><path d="M58.5 28.4Q58.5 31 61.1 31Q58.5 31 58.5 33.6Q58.5 31 55.9 31Q58.5 31 58.5 28.4Z" fill="#4cc2ee"/><path d="M8 20.6Q8 24 11.4 24Q8 24 8 27.4Q8 24 4.6 24Q8 24 8 20.6Z" fill="#4cc2ee"/><circle cx="32" cy="38" r="21" fill="url(#m__U__r)" stroke="#0d4572" stroke-opacity=".35" stroke-width="1"/><circle cx="32" cy="38" r="17.5" fill="url(#m__U__f)" stroke="#fff" stroke-opacity=".55" stroke-width="1"/><path d="M17.9 32.9A15 15 0 0 1 26.9 23.9" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.2" stroke-linecap="round"/><g transform="translate(0 1)"><path d="M32 23.5L43.5 27.5V36.5C43.5 43 38.5 47.5 32 50.5C25.5 47.5 20.5 43 20.5 36.5V27.5Z" fill="#0d4572" stroke="#0d4572" stroke-width="1.6" stroke-linejoin="round"/><polygon points="32.00,30.30 33.76,35.07 38.85,35.28 34.85,38.43 36.23,43.32 32.00,40.50 27.77,43.32 29.15,38.43 25.15,35.28 30.24,35.07" fill="#ecfaff"/></g></svg>`,
+    first_treat: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="__S__" height="__S__" aria-hidden="true" focusable="false"><defs><linearGradient id="m__U__r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffc2dc"/><stop offset="1" stop-color="#b83d79"/></linearGradient><radialGradient id="m__U__f" cx="0.35" cy="0.3" r="0.9"><stop offset="0" stop-color="#ffe6f0"/><stop offset="1" stop-color="#ff8fbd"/></radialGradient></defs><polygon points="17,3 30,3 37,27 24,27" fill="#3b82f6"/><polygon points="34,3 47,3 40,27 27,27" fill="#1f56c4"/><circle cx="32" cy="38" r="21" fill="url(#m__U__r)" stroke="#7d1f4d" stroke-opacity=".35" stroke-width="1"/><circle cx="32" cy="38" r="17.5" fill="url(#m__U__f)" stroke="#fff" stroke-opacity=".55" stroke-width="1"/><path d="M17.9 32.9A15 15 0 0 1 26.9 23.9" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.2" stroke-linecap="round"/><g transform="translate(0 1)"><rect x="22" y="33.5" width="20" height="15" rx="2" fill="#7d1f4d"/><rect x="20" y="29.5" width="24" height="6" rx="1.8" fill="#7d1f4d"/><rect x="30" y="29.5" width="4" height="19" fill="#fff0f6"/><path d="M32 29.5C28.5 22.5 22 24.5 24.5 28C25.5 29.2 29.5 29.5 32 29.5Z" fill="#fff0f6" stroke="#7d1f4d" stroke-width="1.5" stroke-linejoin="round"/><path d="M32 29.5C35.5 22.5 42 24.5 39.5 28C38.5 29.2 34.5 29.5 32 29.5Z" fill="#fff0f6" stroke="#7d1f4d" stroke-width="1.5" stroke-linejoin="round"/></g></svg>`,
+    bonus_10: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="__S__" height="__S__" aria-hidden="true" focusable="false"><defs><linearGradient id="m__U__r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f0b684"/><stop offset="1" stop-color="#9a5424"/></linearGradient><radialGradient id="m__U__f" cx="0.35" cy="0.3" r="0.9"><stop offset="0" stop-color="#fbdcc0"/><stop offset="1" stop-color="#e2955a"/></radialGradient></defs><polygon points="17,3 30,3 37,27 24,27" fill="#8b5cf6"/><polygon points="34,3 47,3 40,27 27,27" fill="#5a35c0"/><circle cx="32" cy="38" r="21" fill="url(#m__U__r)" stroke="#6b3512" stroke-opacity=".35" stroke-width="1"/><circle cx="32" cy="38" r="17.5" fill="url(#m__U__f)" stroke="#fff" stroke-opacity=".55" stroke-width="1"/><path d="M17.9 32.9A15 15 0 0 1 26.9 23.9" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.2" stroke-linecap="round"/><g transform="translate(0 1)"><path d="M24 28.5L32.5 37L24 45.5M33.5 28.5L42 37L33.5 45.5" fill="none" stroke="#6b3512" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/></g></svg>`,
+    bonus_50: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="__S__" height="__S__" aria-hidden="true" focusable="false"><defs><linearGradient id="m__U__r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f4f7fb"/><stop offset="1" stop-color="#8a95a3"/></linearGradient><radialGradient id="m__U__f" cx="0.35" cy="0.3" r="0.9"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#cdd5df"/></radialGradient></defs><polygon points="17,3 30,3 37,27 24,27" fill="#8b5cf6"/><polygon points="34,3 47,3 40,27 27,27" fill="#5a35c0"/><circle cx="32" cy="38" r="21" fill="url(#m__U__r)" stroke="#465163" stroke-opacity=".35" stroke-width="1"/><circle cx="32" cy="38" r="17.5" fill="url(#m__U__f)" stroke="#fff" stroke-opacity=".55" stroke-width="1"/><path d="M17.9 32.9A15 15 0 0 1 26.9 23.9" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.2" stroke-linecap="round"/><g transform="translate(0 1)"><polygon points="35.5,23.5 23.5,38.5 31,38.5 28,50.5 41,34 33,34" fill="#465163" stroke="#465163" stroke-width="1.6" stroke-linejoin="round"/></g></svg>`,
+    bonus_100: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="__S__" height="__S__" aria-hidden="true" focusable="false"><defs><linearGradient id="m__U__r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe27a"/><stop offset="1" stop-color="#c98a0a"/></linearGradient><radialGradient id="m__U__f" cx="0.35" cy="0.3" r="0.9"><stop offset="0" stop-color="#fff4c2"/><stop offset="1" stop-color="#f5c542"/></radialGradient></defs><polygon points="17,3 30,3 37,27 24,27" fill="#8b5cf6"/><polygon points="34,3 47,3 40,27 27,27" fill="#5a35c0"/><circle cx="32" cy="38" r="21" fill="url(#m__U__r)" stroke="#7a4a00" stroke-opacity=".35" stroke-width="1"/><circle cx="32" cy="38" r="17.5" fill="url(#m__U__f)" stroke="#fff" stroke-opacity=".55" stroke-width="1"/><path d="M17.9 32.9A15 15 0 0 1 26.9 23.9" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.2" stroke-linecap="round"/><g transform="translate(0 1)"><path d="M32 23.5C38.5 28.5 38.5 37.5 36.5 43H27.5C25.5 37.5 25.5 28.5 32 23.5Z" fill="#7a4a00"/><path d="M28 37.5L21.5 44L28 43ZM36 37.5L42.5 44L36 43Z" fill="#7a4a00"/><circle cx="32" cy="32" r="3.2" fill="#fff8d9"/><path d="M29.6 44.6C30 48 31 50 32 52C33 50 34 48 34.4 44.6Z" fill="#ff7a1a" stroke="#7a4a00" stroke-width="1" stroke-linejoin="round"/></g></svg>`,
+    bonus_250: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="__S__" height="__S__" aria-hidden="true" focusable="false"><defs><linearGradient id="m__U__r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d4f6ff"/><stop offset="1" stop-color="#2a86c8"/></linearGradient><radialGradient id="m__U__f" cx="0.35" cy="0.3" r="0.9"><stop offset="0" stop-color="#f4fdff"/><stop offset="1" stop-color="#7fd6f4"/></radialGradient></defs><polygon points="17,3 30,3 37,27 24,27" fill="#8b5cf6"/><polygon points="34,3 47,3 40,27 27,27" fill="#5a35c0"/><path d="M54 15.5Q54 20 58.5 20Q54 20 54 24.5Q54 20 49.5 20Q54 20 54 15.5Z" fill="#4cc2ee"/><path d="M58.5 28.4Q58.5 31 61.1 31Q58.5 31 58.5 33.6Q58.5 31 55.9 31Q58.5 31 58.5 28.4Z" fill="#4cc2ee"/><path d="M8 20.6Q8 24 11.4 24Q8 24 8 27.4Q8 24 4.6 24Q8 24 8 20.6Z" fill="#4cc2ee"/><circle cx="32" cy="38" r="21" fill="url(#m__U__r)" stroke="#0d4572" stroke-opacity=".35" stroke-width="1"/><circle cx="32" cy="38" r="17.5" fill="url(#m__U__f)" stroke="#fff" stroke-opacity=".55" stroke-width="1"/><path d="M17.9 32.9A15 15 0 0 1 26.9 23.9" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.2" stroke-linecap="round"/><g transform="translate(0 1)"><g transform="rotate(-22 32 37)"><ellipse cx="32" cy="37" rx="15.5" ry="4.8" fill="none" stroke="#0d4572" stroke-width="2.6"/><circle cx="32" cy="37" r="8.2" fill="#0d4572"/><path d="M16.5 37A15.5 4.8 0 0 0 47.5 37" fill="none" stroke="#ecfaff" stroke-width="1.3"/></g></g></svg>`
+  };
+  var kcpMedalUid = 0;
+  var kcpMedalSvg = (id, size = 64) => {
+    const svg = KCP_MEDAL_SVG[id];
+    return svg ? svg.replaceAll("__U__", String(++kcpMedalUid)).replaceAll("__S__", String(size)) : "";
+  };
+
+  // frontend/src/cards/medals.js
+  var KCP_MEDAL_SECTIONS = [
+    ["m_streaks", ["day", "week"], "#f2603a"],
+    ["m_chores", ["chores", "treat"], "#3b82f6"],
+    ["m_bonus", ["bonus"], "#8b5cf6"]
+  ];
+  var KCP_NEW_DAYS = 2;
+  var KidChoresMedalsCard = class extends HTMLElement {
+    constructor() {
+      super();
+      this.attachShadow({ mode: "open" });
+      this._all = false;
+      this._sig = "";
+    }
+    static getConfigElement() {
+      return document.createElement("kid-chores-medals-card-editor");
+    }
+    static getStubConfig() {
+      return {};
+    }
+    setConfig(config) {
+      this._config = config;
+      this._sig = "";
+      if (this._hass) this._render();
+    }
+    set hass(hass) {
+      this._hass = hass;
+      this._render();
+    }
+    getCardSize() {
+      return 6;
+    }
+    getGridOptions() {
+      return { columns: 12, min_columns: 6 };
+    }
+    _isNew(date) {
+      const age = (Date.now() - (/* @__PURE__ */ new Date(`${date}T00:00:00`)).getTime()) / 864e5;
+      return age < KCP_NEW_DAYS + 1;
+    }
+    _tile(h, m) {
+      const earned = !!m.earned;
+      let sub;
+      if (earned) {
+        const d = (/* @__PURE__ */ new Date(`${m.earned}T00:00:00`)).toLocaleDateString(h.language, { day: "numeric", month: "short" });
+        sub = `<div class="sub">${kcpEsc(kcpT(h, "m_earned", { d }))}</div>`;
+      } else {
+        const unit = { day: "pu_day", week: "pu_week", chores: "pu_chores", bonus: "pu_bonus" }[m.kind];
+        const text = unit ? `${m.progress} / ${m.at} ${kcpT(h, unit)}` : kcpT(h, "m_not_yet");
+        const pct = Math.min(100, Math.round(m.progress / m.at * 100));
+        sub = `<div class="how">${kcpEsc(m.how)}</div>
+        <div class="bar"><div style="width:${pct}%"></div></div>
+        <div class="sub">${kcpEsc(text)}</div>`;
+      }
+      const bonus = m.bonus ? `<span class="pill">+${m.bonus} p</span>` : "";
+      const flag = earned && this._isNew(m.earned) ? `<span class="new">${kcpEsc(kcpT(h, "m_new"))}</span>` : "";
+      return `<div class="medal ${earned ? "got" : "lock"}" data-id="${kcpEsc(m.id)}">
+      ${flag}
+      <div class="art">${kcpMedalSvg(m.id, 72)}</div>
+      <div class="name">${kcpEsc(m.name)}</div>
+      ${sub}
+      ${earned ? "" : bonus}
+    </div>`;
+    }
+    _render() {
+      const h = this._hass, cfg = this._config;
+      if (!h || !cfg) return;
+      const S = kcpSensors(h, cfg.device);
+      const med = S?.medals;
+      const sig = [
+        h.language,
+        med?.state,
+        JSON.stringify(med?.attributes),
+        S?.day_streak?.state,
+        S?.week_streak?.state,
+        (/* @__PURE__ */ new Date()).toDateString(),
+        JSON.stringify(cfg),
+        this._all
+      ].join("|");
+      if (sig === this._sig) return;
+      this._sig = sig;
+      const title = cfg.title ?? kcpT(h, "medals_title");
+      let body = "";
+      let summary = "";
+      if (!S) body = `<div class="empty">${kcpEsc(kcpT(h, "no_tracker"))}</div>`;
+      else if (!med?.attributes.enabled) body = `<div class="empty">${kcpEsc(kcpT(h, "medals_off"))}</div>`;
+      else {
+        const shown = med.attributes.medals.filter((m) => m.available);
+        const got = shown.filter((m) => m.earned).length;
+        const streak = (key, unit, icon) => {
+          const n = parseInt(S[key]?.state, 10) || 0;
+          return `<span class="chip"><ha-icon icon="${icon}"></ha-icon>${kcpEsc(kcpCount(h, unit, n))}</span>`;
+        };
+        summary = `<div class="chips">
+        ${streak("day_streak", "day", "mdi:fire")}${streak("week_streak", "week", "mdi:trophy-outline")}
+        <span class="chip"><ha-icon icon="mdi:medal"></ha-icon>${kcpEsc(kcpT(h, "medals_count", { n: got, total: shown.length }))}</span>
+      </div>`;
+        const next = /* @__PURE__ */ new Set();
+        const seen = /* @__PURE__ */ new Set();
+        for (const m of shown) {
+          if (m.earned || seen.has(m.kind)) continue;
+          seen.add(m.kind);
+          next.add(m.id);
+        }
+        const visible = (m) => this._all || m.earned || next.has(m.id);
+        for (const [key, kinds, color] of KCP_MEDAL_SECTIONS) {
+          const list = shown.filter((m) => kinds.includes(m.kind));
+          if (!list.length) continue;
+          body += `<div class="sec"><span class="dot" style="background:${color}"></span>${kcpEsc(kcpT(h, key))}
+          <span class="cnt">${list.filter((m) => m.earned).length}/${list.length}</span></div>
+          <div class="grid">${list.filter(visible).map((m) => this._tile(h, m)).join("")}</div>`;
+        }
+        const hidden = shown.filter((m) => !visible(m)).length;
+        if (hidden || this._all) {
+          body += `<button class="more">${kcpEsc(this._all ? kcpT(h, "m_show_less") : kcpT(h, "m_show_all", { n: hidden }))}</button>`;
+        }
+      }
+      this.shadowRoot.innerHTML = `
+      <style>
+        ha-card { padding: 16px; }
+        .t { font-size: 1.4em; font-weight: 600; color: var(--primary-text-color); }
+        .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 16px;
+          background: var(--secondary-background-color, rgba(127,127,127,.1)); color: var(--primary-text-color);
+          font-size: .9em; --mdc-icon-size: 18px; }
+        .sec { display: flex; align-items: center; gap: 8px; margin: 18px 0 8px; font-weight: 600; color: var(--primary-text-color); }
+        .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+        .cnt { margin-left: auto; font-weight: 400; font-size: .85em; color: var(--secondary-text-color); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+        .medal { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px;
+          padding: 12px 8px 10px; border-radius: 12px; min-width: 0;
+          background: var(--secondary-background-color, rgba(127,127,127,.1)); }
+        .art { line-height: 0; }
+        .lock .art svg { filter: grayscale(1) opacity(.42); }
+        .name { margin-top: 4px; font-weight: 600; color: var(--primary-text-color); overflow-wrap: anywhere; }
+        .lock .name { color: var(--secondary-text-color); }
+        .sub { font-size: .8em; color: var(--secondary-text-color); font-variant-numeric: tabular-nums; }
+        .how { font-size: .8em; color: var(--secondary-text-color); }
+        .bar { width: 100%; height: 6px; border-radius: 3px; margin-top: 6px; overflow: hidden;
+          background: var(--divider-color, rgba(127,127,127,.3)); }
+        .bar div { height: 100%; border-radius: 3px; background: var(--primary-color); }
+        .pill { margin-top: 6px; padding: 1px 9px; border-radius: 10px; font-size: .75em; font-weight: 700;
+          background: color-mix(in srgb, #ffd60a 28%, transparent); color: var(--primary-text-color); }
+        .new { position: absolute; top: 8px; right: 8px; padding: 1px 7px; border-radius: 9px;
+          background: #ff453a; color: #fff; font-size: .7em; font-weight: 700; letter-spacing: .04em; }
+        .empty { padding: 16px 0 0; color: var(--secondary-text-color); }
+        .more { display: block; margin: 16px auto 0; padding: 8px 18px; border: 0; border-radius: 18px; cursor: pointer;
+          background: var(--secondary-background-color, rgba(127,127,127,.1)); color: var(--primary-text-color); font: inherit; }
+      </style>
+      <ha-card>
+        <div class="t">${kcpEsc(title)}</div>
+        ${summary}
+        ${body}
+      </ha-card>`;
+      this.shadowRoot.querySelector(".more")?.addEventListener("click", () => {
+        this._all = !this._all;
+        this._sig = "";
+        this._render();
+      });
+    }
+  };
+  var KidChoresMedalsCardEditor = class extends KidChoresStatusCardEditor {
+  };
+  customElements.define("kid-chores-medals-card", KidChoresMedalsCard);
+  customElements.define("kid-chores-medals-card-editor", KidChoresMedalsCardEditor);
+  window.customCards.push({
+    type: "kid-chores-medals-card",
+    name: "Kid Chores & Points \u2013 Medals",
+    description: "Streaks and medals: what the child has earned and how far they are from the next ones.",
     preview: true
   });
 })();

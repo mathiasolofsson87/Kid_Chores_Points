@@ -1,4 +1,4 @@
-import { kcpEsc, kcpT, kcpSensors } from "../helpers.js";
+import { kcpCount, kcpEsc, kcpT, kcpSensors } from "../helpers.js";
 
 /* ------------------------------------------------------------------ */
 /*  Status card                                                        */
@@ -53,6 +53,8 @@ class KidChoresStatusCard extends HTMLElement {
       S?.bonus_week?.attributes.enabled,
       S?.wallet?.attributes.enabled,
       S?.wallet?.attributes.currency,
+      S?.day_streak?.attributes,
+      S?.week_streak?.attributes,
       h.language,
       this._config,
       chips,
@@ -74,8 +76,29 @@ class KidChoresStatusCard extends HTMLElement {
     const tile = (icon, color, primary, secondary, cls = "tile") => `
       <div class="${cls}" style="--c:${color}">
         <div class="ico"><ha-icon icon="${icon}"></ha-icon></div>
-        <div class="txt"><div class="primary">${kcpEsc(primary)}</div><div class="secondary">${kcpEsc(secondary)}</div></div>
+        <div class="txt"><div class="primary">${kcpEsc(primary)}</div>${[].concat(secondary).map((l) => `<div class="secondary">${kcpEsc(l)}</div>`).join("")}</div>
       </div>`;
+
+    // One streak tile (only when switched on under Configure -> Streaks & medals): the streak
+    // that is closest to its next medal, a day streak or a week streak (a week counts as 7 days).
+    let streaks = "";
+    const day = S.day_streak;
+    if (day?.attributes.enabled) {
+      const week = S.week_streak;
+      const dayNext = day.attributes.next;
+      const weekNext = week?.attributes.next;
+      const weekCloser = weekNext && (!dayNext || weekNext.remaining * 7 < dayNext.remaining);
+      const [src, unit, next] = weekCloser ? [week, "week", weekNext] : [day, "day", dayNext];
+      const count = parseInt(src.state, 10) || 0;
+      const lines = [
+        next
+          ? kcpT(h, "streak_next", { n: next.remaining, name: next.name })
+          : kcpT(h, "streak_best", { n: src.attributes.best }),
+      ];
+      const risk = day.attributes.at_risk;
+      if (risk) lines.push(kcpT(h, "streak_risk", { n: parseInt(day.state, 10) || 0 }));
+      streaks = tile("mdi:trophy-outline", risk ? "#ff9f0a" : "#bf5af2", kcpCount(h, unit, count), lines, "wide");
+    }
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -137,6 +160,7 @@ class KidChoresStatusCard extends HTMLElement {
           ${tile("mdi:flag-variant", "#0a84ff", `${n("points_to_goal")} p`, kcpT(h, "to_goal"))}
           ${tile("mdi:calendar-check", "#30d158", `${n("points_today")} p`, kcpT(h, "today"))}
           ${tile("mdi:piggy-bank", "#ff9f0a", `${n("points_bank")} p`, kcpT(h, "bank"))}
+          ${streaks}
           ${
             S.wallet?.attributes.enabled
               ? tile("mdi:wallet", "#64d2ff", `${n("wallet")} ${S.wallet.attributes.currency}`, kcpT(h, "wallet_title"), "wide")

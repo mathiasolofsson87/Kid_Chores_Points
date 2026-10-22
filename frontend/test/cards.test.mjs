@@ -5,7 +5,7 @@ import { loadCards, makeHass, mount } from "./harness.mjs";
 
 const win = loadCards();
 
-const CARDS = ["rewards", "status", "adjust", "history", "todo", "bonus", "wallet"];
+const CARDS = ["rewards", "status", "adjust", "history", "todo", "bonus", "wallet", "medals"];
 
 test("every card and its editor is registered", () => {
   for (const name of CARDS) {
@@ -226,4 +226,197 @@ test("wallet card shows the balance and recent movements", async () => {
   assert.match(text, /70 kr/);
   assert.match(text, /Pocket money/);
   assert.match(text, /Gift/);
+});
+
+// ---------------------------------------------------------------------
+// Streaks and medals
+// ---------------------------------------------------------------------
+const today = () => new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD, local time
+
+const medal = (id, extra = {}) => ({
+  id,
+  kind: "day",
+  tier: "bronze",
+  name: "Little Sprout",
+  how: "Do all your daily chores 3 days in a row",
+  at: 3,
+  bonus: 5,
+  earned: null,
+  progress: 2,
+  available: true,
+  ...extra,
+});
+
+const medalsHass = (medals, { enabled = true, day = "2", week = "1" } = {}) =>
+  makeHass({
+    sensors: {
+      medals: { state: String(medals.filter((m) => m.earned).length), attributes: { enabled, medals } },
+      day_streak: { state: day, attributes: { enabled, best: 4, at_risk: false, next: null } },
+      week_streak: { state: week, attributes: { enabled, best: 1, next: null } },
+      wallet: { state: "0", attributes: { currency: "kr", enabled: false } },
+    },
+  });
+
+test("medals card says how to switch the feature on when it is off", async () => {
+  const card = await mount(win, "kid-chores-medals-card", {}, medalsHass([medal("day_3")], { enabled: false }));
+  assert.match(card.shadowRoot.textContent, /switched off/);
+  assert.equal(card.shadowRoot.querySelectorAll(".medal").length, 0);
+});
+
+test("medals card shows earned medals, and locked ones with what to do and how far along", async () => {
+  const medals = [
+    medal("day_3", { earned: "2026-01-05", progress: 3 }),
+    medal("day_7", { name: "Super Seven", how: "Do all your daily chores 7 days in a row", at: 7, bonus: 10, progress: 2 }),
+    medal("chores_25", { kind: "chores", name: "Broom Buddy", how: "Complete 25 chores", at: 25, progress: 10 }),
+  ];
+  const card = await mount(win, "kid-chores-medals-card", {}, medalsHass(medals));
+  const root = card.shadowRoot;
+  const got = root.querySelector('.medal[data-id="day_3"]');
+  assert.ok(got.classList.contains("got"));
+  assert.match(got.textContent, /Little Sprout/);
+  assert.match(got.textContent, /Earned Jan 5/);
+  assert.ok(got.querySelector("svg"));
+
+  const locked = root.querySelector('.medal[data-id="day_7"]');
+  assert.ok(locked.classList.contains("lock"));
+  assert.match(locked.textContent, /Do all your daily chores 7 days in a row/);
+  assert.match(locked.textContent, /2 \/ 7 days/);
+  assert.match(locked.textContent, /\+10 p/);
+  assert.equal(locked.querySelector(".bar div").style.width, "29%");
+
+  assert.match(root.querySelector('.medal[data-id="chores_25"]').textContent, /10 \/ 25 chores/);
+  assert.match(root.textContent, /1 of 3 medals/);
+  assert.match(root.textContent, /2 days/); // the day streak chip
+  assert.equal(root.querySelectorAll(".sec").length, 2); // Streaks and Chores; no bonus or wallet medals
+});
+
+test("medals that don't apply to this setup are hidden until earned", async () => {
+  const medals = [
+    medal("day_3"),
+    medal("bonus_10", { kind: "bonus", name: "Speedy Extra", at: 10, bonus: 5, available: false }),
+    medal("first_treat", { kind: "treat", tier: "treat", name: "Treat Yourself!", at: 1, bonus: 0, available: true, earned: "2026-01-05", progress: 1 }),
+  ];
+  const card = await mount(win, "kid-chores-medals-card", {}, medalsHass(medals));
+  const ids = Array.from(card.shadowRoot.querySelectorAll(".medal"), (el) => el.dataset.id);
+  assert.deepEqual(ids, ["day_3", "first_treat"]);
+});
+
+test("a medal earned in the last days is marked new, an older one is not", async () => {
+  const medals = [medal("day_3", { earned: today() }), medal("day_7", { earned: "2026-01-05", at: 7 })];
+  const card = await mount(win, "kid-chores-medals-card", {}, medalsHass(medals));
+  assert.ok(card.shadowRoot.querySelector('.medal[data-id="day_3"] .new'));
+  assert.equal(card.shadowRoot.querySelector('.medal[data-id="day_7"] .new'), null);
+});
+
+test("medals card follows the user's language", async () => {
+  const hass = medalsHass([medal("day_3", { name: "Lilla Grodden", earned: "2026-01-05" })]);
+  hass.language = "sv";
+  const card = await mount(win, "kid-chores-medals-card", {}, hass);
+  assert.match(card.shadowRoot.textContent, /1 av 1 medaljer/);
+  assert.match(card.shadowRoot.textContent, /Serier/);
+});
+
+test("every medal has an icon, and two renders never share gradient ids", () => {
+  const ids = [
+    "day_3", "day_7", "day_14", "day_30", "week_10", "week_12", "week_16", "week_20",
+    "chores_25", "chores_100", "chores_250", "chores_500", "chores_1000", "first_treat",
+    "bonus_10", "bonus_50", "bonus_100", "bonus_250",
+  ]; // prettier-ignore
+  const holder = win.document.createElement("div");
+  win.document.body.appendChild(holder);
+  const card = win.document.createElement("kid-chores-medals-card");
+  card.setConfig({});
+  card.hass = medalsHass(ids.map((id) => medal(id, { kind: "day", earned: "2026-01-05" })));
+  holder.appendChild(card);
+  const svgs = card.shadowRoot.querySelectorAll(".medal svg");
+  assert.equal(svgs.length, ids.length);
+  const gradients = Array.from(card.shadowRoot.querySelectorAll("linearGradient, radialGradient"), (g) => g.id);
+  assert.equal(new Set(gradients).size, gradients.length);
+  assert.ok(gradients.every((id) => !id.includes("__")));
+});
+
+test("status card shows one streak tile: the day streak when its medal is nearest", async () => {
+  const hass = medalsHass([], { day: "5", week: "3" });
+  hass.states["sensor.kid_day_streak"].attributes.next = { id: "day_7", name: "Super Seven", at: 7, remaining: 2 };
+  hass.states["sensor.kid_week_streak"].attributes.next = { id: "week_10", name: "Bullseye!", at: 10, remaining: 7 };
+  const card = await mount(win, "kid-chores-status-card", {}, hass);
+  const text = card.shadowRoot.textContent;
+  assert.match(text, /5 days/);
+  assert.match(text, /2 more for “Super Seven”/);
+  assert.doesNotMatch(text, /3 weeks/);
+  assert.doesNotMatch(text, /Bullseye/);
+  assert.doesNotMatch(text, /Finish today's chores/);
+});
+
+test("the streak tile switches to the week streak when that medal is nearer", async () => {
+  const hass = medalsHass([], { day: "20", week: "9" });
+  hass.states["sensor.kid_day_streak"].attributes.next = { id: "day_30", name: "Unstoppable!", at: 30, remaining: 10 };
+  hass.states["sensor.kid_week_streak"].attributes.next = { id: "week_10", name: "Bullseye!", at: 10, remaining: 1 };
+  const card = await mount(win, "kid-chores-status-card", {}, hass);
+  const text = card.shadowRoot.textContent;
+  assert.match(text, /9 weeks/);
+  assert.match(text, /1 more for “Bullseye!”/);
+  assert.doesNotMatch(text, /20 days/);
+});
+
+test("the streak tile warns when the day streak is at risk, and shows the best streak when every medal is earned", async () => {
+  const hass = medalsHass([], { day: "5", week: "3" });
+  hass.states["sensor.kid_day_streak"].attributes.next = { id: "day_7", name: "Super Seven", at: 7, remaining: 2 };
+  hass.states["sensor.kid_day_streak"].attributes.at_risk = true;
+  const card = await mount(win, "kid-chores-status-card", {}, hass);
+  assert.match(card.shadowRoot.textContent, /Finish today's chores to keep your 5-day streak!/);
+  assert.match(card.shadowRoot.textContent, /2 more for “Super Seven”/);
+
+  hass.states["sensor.kid_day_streak"].attributes = { enabled: true, key: "day_streak", best: 40, at_risk: false, next: null };
+  hass.states["sensor.kid_day_streak"].state = "6";
+  card.hass = { ...hass };
+  assert.match(card.shadowRoot.textContent, /6 days/);
+  assert.match(card.shadowRoot.textContent, /Best: 40/);
+  assert.doesNotMatch(card.shadowRoot.textContent, /Finish today's chores/);
+});
+
+test("status card shows no streak tiles while the feature is off", async () => {
+  const card = await mount(win, "kid-chores-status-card", {}, medalsHass([], { enabled: false }));
+  assert.doesNotMatch(card.shadowRoot.textContent, /streak/i);
+});
+
+test("a medal in the history card shows its bonus, or nothing for an honorary one", async () => {
+  const history = [
+    entry({ id: "m2", group: "g", can_revert: false, type: "medal", label: "Cha-Ching!", points: 0, target: "bank" }),
+    entry({ id: "m1", group: "g", can_revert: false, type: "medal", label: "Little Sprout", points: 5, target: "bank" }),
+  ];
+  const card = await mount(win, "kid-chores-history-card", {}, historyHass(history));
+  const rows = card.shadowRoot.querySelectorAll(".row");
+  assert.match(rows[0].textContent, /Cha-Ching!/);
+  assert.match(rows[0].textContent, /Medal earned/);
+  assert.doesNotMatch(rows[0].querySelector(".pts").textContent, /\d/);
+  assert.match(rows[1].querySelector(".pts").textContent, /\+5 p to the bank/);
+});
+
+test("medals card shows the earned medals and the next one to earn, and a button for the rest", async () => {
+  const medals = [
+    medal("day_3", { earned: "2026-01-05", progress: 3 }),
+    medal("day_7", { name: "Super Seven", at: 7, progress: 5 }),
+    medal("day_14", { name: "Hot Streak", at: 14, progress: 5 }),
+    medal("week_10", { kind: "week", name: "Bullseye!", at: 10, progress: 3 }),
+    medal("week_12", { kind: "week", name: "Goal-o-Matic", at: 12, progress: 3 }),
+  ];
+  const card = await mount(win, "kid-chores-medals-card", {}, medalsHass(medals));
+  const ids = () => Array.from(card.shadowRoot.querySelectorAll(".medal"), (el) => el.dataset.id);
+  // the first locked day medal and the first locked week medal
+  assert.deepEqual(ids(), ["day_3", "day_7", "week_10"]);
+  assert.match(card.shadowRoot.querySelector(".more").textContent, /Show all medals \(2 more\)/);
+  assert.match(card.shadowRoot.textContent, /1\/5/); // the section count still covers every medal
+
+  card.shadowRoot.querySelector(".more").click();
+  assert.deepEqual(ids(), ["day_3", "day_7", "day_14", "week_10", "week_12"]);
+  assert.match(card.shadowRoot.querySelector(".more").textContent, /Show fewer medals/);
+
+  card.shadowRoot.querySelector(".more").click();
+  assert.deepEqual(ids(), ["day_3", "day_7", "week_10"]);
+});
+
+test("there is no show-all button when nothing is hidden", async () => {
+  const card = await mount(win, "kid-chores-medals-card", {}, medalsHass([medal("day_3", { earned: "2026-01-05" })]));
+  assert.equal(card.shadowRoot.querySelector(".more"), null);
 });

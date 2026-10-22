@@ -48,3 +48,6 @@ export const kcpSensors = (hass, device) => {
   for (const f of found) if (f.device === chosen) out[f.st.attributes.key] = f.st;
   return out;
 };
+
+/* "1 day" / "3 days" for the units day and week. */
+export const kcpCount = (hass, unit, n) => `${n} ${kcpT(hass, `unit_${unit}_${n === 1 ? "1" : "n"}`)}`;

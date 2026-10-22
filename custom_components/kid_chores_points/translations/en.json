@@ -23,6 +23,7 @@
           "bonus": "Bonus chores",
           "rewards": "Rewards",
           "settings": "Goal, policy & currency",
+          "medals": "Streaks & medals",
           "bedtime": "Bedtime reminder",
           "notifications": "Notifications",
           "finish": "Finish"
@@ -192,11 +193,95 @@
           "bedtime_weekend": "Bedtime on Fridays and Saturdays. Optional; leave empty to use the school-night bedtime every night.",
           "bedtime_lead": "Minutes before bedtime, 5–240."
         }
+      },
+      "medals": {
+        "title": "Streaks & medals",
+        "description": "Streaks and medals for the child. A **day streak** counts days in a row when every mandatory chore is done, a **week streak** counts weeks in a row when the weekly goal is reached. Medals can also count chores and bonus chores. A medal can pay bonus points (at most 50) straight into the bank. Counting starts when you switch it on.",
+        "menu_options": {
+          "medals_settings": "Settings",
+          "medals_day": "Day-streak medals",
+          "medals_week": "Week-streak medals",
+          "medals_chores": "Chores-done medals",
+          "medals_bonus": "Bonus-chore medals",
+          "init": "Back"
+        }
+      },
+      "medals_settings": {
+        "title": "Streaks & medals settings",
+        "data": {
+          "medals_enabled": "Turn on streaks and medals",
+          "medals_grace": "Forgive one missed day per week",
+          "medals_notify": "Notify when a medal is earned"
+        },
+        "data_description": {
+          "medals_enabled": "Counting starts when you turn this on; earlier chores don't count. Turning it off pauses counting and hides the medals but keeps what was earned.",
+          "medals_grace": "A day streak survives one missed day in each week. The missed day isn't counted.",
+          "medals_notify": "Send a notification to the child and the parents when a medal is earned."
+        }
+      },
+      "medals_day": {
+        "title": "Day-streak medals",
+        "description": "Set how far the child has to get for each medal and how many bonus points it pays (0–50, added to the bank). Each target must be higher than the one above. Medals that are already earned stay earned.",
+        "data": {
+          "day_3_at": "Little Sprout: days in a row",
+          "day_3_bonus": "Little Sprout: bonus points",
+          "day_7_at": "Super Seven: days in a row",
+          "day_7_bonus": "Super Seven: bonus points",
+          "day_14_at": "Hot Streak: days in a row",
+          "day_14_bonus": "Hot Streak: bonus points",
+          "day_30_at": "Unstoppable!: days in a row",
+          "day_30_bonus": "Unstoppable!: bonus points"
+        }
+      },
+      "medals_week": {
+        "title": "Week-streak medals",
+        "description": "Set how far the child has to get for each medal and how many bonus points it pays (0–50, added to the bank). Each target must be higher than the one above. Medals that are already earned stay earned.",
+        "data": {
+          "week_10_at": "Bullseye!: weeks in a row",
+          "week_10_bonus": "Bullseye!: bonus points",
+          "week_12_at": "Goal-o-Matic: weeks in a row",
+          "week_12_bonus": "Goal-o-Matic: bonus points",
+          "week_16_at": "Top of the World: weeks in a row",
+          "week_16_bonus": "Top of the World: bonus points",
+          "week_20_at": "Mega Champ: weeks in a row",
+          "week_20_bonus": "Mega Champ: bonus points"
+        }
+      },
+      "medals_chores": {
+        "title": "Chores-done medals",
+        "description": "Set how far the child has to get for each medal and how many bonus points it pays (0–50, added to the bank). Each target must be higher than the one above. Medals that are already earned stay earned.",
+        "data": {
+          "chores_25_at": "Broom Buddy: chores done",
+          "chores_25_bonus": "Broom Buddy: bonus points",
+          "chores_100_at": "Superstar: chores done",
+          "chores_100_bonus": "Superstar: bonus points",
+          "chores_250_at": "Star Collector: chores done",
+          "chores_250_bonus": "Star Collector: bonus points",
+          "chores_500_at": "Royal Helper: chores done",
+          "chores_500_bonus": "Royal Helper: bonus points",
+          "chores_1000_at": "Chore Hero: chores done",
+          "chores_1000_bonus": "Chore Hero: bonus points"
+        }
+      },
+      "medals_bonus": {
+        "title": "Bonus-chore medals",
+        "description": "Set how far the child has to get for each medal and how many bonus points it pays (0–50, added to the bank). Each target must be higher than the one above. Medals that are already earned stay earned.",
+        "data": {
+          "bonus_10_at": "Speedy Extra: bonus chores done",
+          "bonus_10_bonus": "Speedy Extra: bonus points",
+          "bonus_50_at": "Zap Attack!: bonus chores done",
+          "bonus_50_bonus": "Zap Attack!: bonus points",
+          "bonus_100_at": "Blast Off!: bonus chores done",
+          "bonus_100_bonus": "Blast Off!: bonus points",
+          "bonus_250_at": "Space Legend: bonus chores done",
+          "bonus_250_bonus": "Space Legend: bonus points"
+        }
       }
     },
     "error": {
       "name_exists": "An item with this name already exists. Use Edit to change it.",
-      "lead_too_long": "The reminder would fall before midnight. Use a shorter time or a later bedtime."
+      "lead_too_long": "The reminder would fall before midnight. Use a shorter time or a later bedtime.",
+      "medal_order": "Each medal needs a higher target than the one above it."
     }
   },
   "selector": {

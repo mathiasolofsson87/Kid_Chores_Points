@@ -69,6 +69,13 @@ views:
           # The child's wallet: current money and recent activity.
           - type: custom:kid-chores-wallet-card
 
+      # ---------------- Medals ----------------
+      # Streaks and medals (turn them on under Configure -> Streaks & medals;
+      # the card says so until you do).
+      - type: grid
+        cards:
+          - type: custom:kid-chores-medals-card
+
   # -------------------------------------------------------------------
   #  Parent view (hidden from the child)
   # -------------------------------------------------------------------

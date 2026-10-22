@@ -17,6 +17,19 @@ from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util, slugify
 
+from .medals import (
+    BONUS,
+    CHORES,
+    COUNTER,
+    COUNTERS,
+    DAY,
+    MEDALS,
+    TREAT,
+    WEEK,
+    Medal,
+    group_medals,
+    medal_rules,
+)
 from .messages import translate
 from .const import (
     CONF_BEDTIME,
@@ -28,6 +41,10 @@ from .const import (
     CONF_GOAL_BONUS,
     CONF_KID_PERSONS,
     CONF_MANDATORY,
+    CONF_MEDAL_RULES,
+    CONF_MEDALS,
+    CONF_MEDALS_GRACE,
+    CONF_MEDALS_NOTIFY,
     CONF_CURRENCY,
     CONF_HISTORY_LIMIT,
     CONF_NOTIFY_KID,
@@ -40,6 +57,7 @@ from .const import (
     DEFAULT_OPTIONS,
     DOMAIN,
     EVENT_TASK_COMPLETED,
+    PERFECT_DAYS_KEPT,
     POLICY_FORFEIT,
     POLICY_HALF,
     SIGNAL_UPDATE,
@@ -59,6 +77,19 @@ def _empty_today(date: str = "") -> dict[str, Any]:
         "bonus_done": [],
         "pending": [],  # [{"name": str, "points": int}]
         "points": 0,
+    }
+
+
+def _empty_medals() -> dict[str, Any]:
+    return {
+        "perfect_days": [],  # dates (ISO) with every mandatory chore done
+        "week_streak": 0,  # weeks in a row with the goal reached
+        "best_day": 0,
+        "best_week": 0,
+        "chores_done": 0,
+        "bonus_done": 0,
+        "treats": 0,  # rewards handed out
+        "earned": {},  # {medal id: {"date": ISO date}}
     }
 
 
@@ -129,6 +160,7 @@ class ChoresManager:
             **stored,
         }
         self.data.pop("undo", None)  # snapshots of the old latest-only undo
+        self.data["medals"] = {**_empty_medals(), **self.data.get("medals", {})}
         self._prev = self._totals()
         # Baseline for the missed-week-close catch-up: without it an upgrade (or a
         # changed first day of the week) would close the running week right away.
@@ -171,6 +203,7 @@ class ChoresManager:
             "week_bonus": self.week_bonus,
             "bank": self.bank,
             "wallet": self.wallet,
+            **{counter: int(self.medal_data[counter]) for counter in COUNTERS},
         }
 
     def can_revert(self, entry: dict[str, Any]) -> bool:
@@ -189,6 +222,177 @@ class ChoresManager:
             if self.can_revert(entry):
                 return entry["label"]
         return None
+
+    # ------------------------------------------------------------------
+    # Streaks and medals
+    # ------------------------------------------------------------------
+    @property
+    def medals_on(self) -> bool:
+        return bool(self.opt(CONF_MEDALS))
+
+    @property
+    def medal_data(self) -> dict[str, Any]:
+        return self.data["medals"]
+
+    def medal_rules(self) -> dict[str, tuple[int, int]]:
+        """{medal id: (target, bonus)} including the parent's changes."""
+        return medal_rules(self.opt(CONF_MEDAL_RULES))
+
+    def _bump(self, counter: str, by: int = 1) -> None:
+        """Count progress towards the medals (only while they are switched on)."""
+        if self.medals_on:
+            self.medal_data[counter] += by
+
+    def _week_key(self, day: date) -> int:
+        """A number that is the same for all days of one (configured) week."""
+        start = WEEK_DAYS.index(self.opt(CONF_WEEK_START))
+        return (day.toordinal() - 1 - start) // 7
+
+    def day_streak(self) -> int:
+        """Days in a row with every mandatory chore done, up to today.
+
+        Today doesn't break the streak until it is over, so a streak that ran
+        through yesterday still counts. With the grace option, one missed day
+        per week is forgiven (it is bridged, not counted).
+        """
+        if not self.medals_on:
+            return 0
+        days = {date.fromisoformat(d) for d in self.medal_data["perfect_days"]}
+        if not days:
+            return 0
+        today = dt_util.now().date()
+        day = today if today in days else today - timedelta(days=1)
+        first, grace, used, streak = min(days), bool(self.opt(CONF_MEDALS_GRACE)), set(), 0
+        while day >= first:
+            if day in days:
+                streak += 1
+            elif grace and (week := self._week_key(day)) not in used:
+                used.add(week)
+            else:
+                break
+            day -= timedelta(days=1)
+        return streak
+
+    def streak_at_risk(self) -> bool:
+        """A running day streak that today's chores still have to extend."""
+        today = dt_util.now().date().isoformat()
+        return (
+            self.medals_on
+            and today not in self.medal_data["perfect_days"]
+            and self.day_streak() > 0
+        )
+
+    def _mark_perfect_day(self) -> None:
+        """Today has every mandatory chore done."""
+        if not self.medals_on or not self.mandatory:
+            return
+        days = self.medal_data["perfect_days"]
+        today = dt_util.now().date().isoformat()
+        if today not in days:
+            days.append(today)
+            days.sort()
+            del days[:-PERFECT_DAYS_KEPT]
+        self.medal_data["best_day"] = max(self.medal_data["best_day"], self.day_streak())
+
+    def _progress(self, kind: str) -> int:
+        if kind == DAY:
+            return self.day_streak()
+        if kind == WEEK:
+            return int(self.medal_data["week_streak"])
+        return int(self.medal_data[COUNTER[kind]])
+
+    def _award_medals(
+        self, kinds: set[str], group: str, notices: list[tuple[str, str, str]]
+    ) -> None:
+        """Hand out the medals of `kinds` that were just reached (under the lock).
+
+        Each medal is earned once. Its bonus goes straight to the bank and is
+        recorded in the history `group` of the change that earned it, so
+        reverting that change takes the medal and its bonus back.
+        """
+        if not self.medals_on:
+            return
+        earned = self.medal_data["earned"]
+        rules = self.medal_rules()
+        today = dt_util.now().date().isoformat()
+        for medal in MEDALS:
+            if medal.kind not in kinds or medal.id in earned:
+                continue
+            at, bonus = rules[medal.id]
+            if self._progress(medal.kind) < at:
+                continue
+            earned[medal.id] = {"date": today}
+            self.data["bank"] = self.bank + bonus
+            name = self.tr(f"medal_{medal.id}")
+            self._record("medal", name, bonus, "bank", group=group, medal=medal.id)
+            notices.extend(self._medal_notices(medal, at, bonus, name))
+
+    def _medal_notices(
+        self, medal: Medal, at: int, bonus: int, name: str
+    ) -> list[tuple[str, str, str]]:
+        how = self.tr(f"how_{medal.kind}", n=at)
+        notices = [("log", "", self.tr("medal_log", name=name))]
+        if self.opt(CONF_MEDALS_NOTIFY):
+            extra = self.tr("medal_bonus", bonus=bonus) if bonus else ""
+            notices += [
+                (
+                    CONF_NOTIFY_KID,
+                    self.tr("medal_title"),
+                    self.tr("medal_kid", name=name, how=how) + extra,
+                ),
+                (
+                    CONF_NOTIFY_PARENTS,
+                    self.tr("medal_parents_title"),
+                    self.tr("medal_parents", name=name, how=how) + extra,
+                ),
+            ]
+        return notices
+
+    def next_medal(self, kind: str) -> dict[str, Any] | None:
+        """The next medal of a group that isn't earned yet, and how far off it is."""
+        earned, rules = self.medal_data["earned"], self.medal_rules()
+        for medal in group_medals(kind):
+            if medal.id not in earned:
+                at = rules[medal.id][0]
+                return {
+                    "id": medal.id,
+                    "name": self.tr(f"medal_{medal.id}"),
+                    "at": at,
+                    "remaining": max(at - self._progress(kind), 0),
+                }
+        return None
+
+    def _medal_available(self, medal: Medal) -> bool:
+        """Whether a medal makes sense for this setup (e.g. no wallet medals without a wallet)."""
+        md = self.medal_data
+        if medal.kind == BONUS:
+            return bool(self.bonus) or md["bonus_done"] > 0
+        if medal.kind == TREAT:
+            return any(r not in self.payouts for r in self.rewards) or md["treats"] > 0
+        return True
+
+    def medal_list(self) -> list[dict[str, Any]]:
+        """Every medal with its name, target, bonus, progress and when it was earned."""
+        earned, rules = self.medal_data["earned"], self.medal_rules()
+        out: list[dict[str, Any]] = []
+        for medal in MEDALS:
+            at, bonus = rules[medal.id]
+            got = earned.get(medal.id)
+            out.append(
+                {
+                    "id": medal.id,
+                    "kind": medal.kind,
+                    "tier": medal.tier,
+                    "name": self.tr(f"medal_{medal.id}"),
+                    "how": self.tr(f"how_{medal.kind}", n=at),
+                    "at": at,
+                    "bonus": bonus,
+                    "earned": got["date"] if got else None,
+                    "progress": at if got else min(self._progress(medal.kind), at),
+                    "available": bool(got) or self._medal_available(medal),
+                }
+            )
+        return out
 
     def _due_close_date(self) -> date:
         """The most recent date whose week-close time (23:59) has already passed."""
@@ -221,6 +425,7 @@ class ChoresManager:
         """
         now = self._totals()
         entry_id = entry_id or uuid.uuid4().hex[:12]
+        dm = {c: now[c] - self._prev[c] for c in COUNTERS if now[c] != self._prev[c]}
         self.history.append(
             {
                 "id": entry_id,
@@ -231,6 +436,7 @@ class ChoresManager:
                 "dwb": now["week_bonus"] - self._prev["week_bonus"],
                 "db": now["bank"] - self._prev["bank"],
                 "dwal": now["wallet"] - self._prev["wallet"],
+                **({"dm": dm} if dm else {}),  # medal counters this entry changed
                 **extra,
                 "t": dt_util.now().isoformat(timespec="seconds"),
                 "type": kind,
@@ -373,6 +579,8 @@ class ChoresManager:
             message = self.tr(
                 "bedtime_many", n=len(items), left="\n".join(f"• {i}" for i in items)
             )
+        if self.medals_on and (streak := self.day_streak()):
+            message += "\n" + self.tr("streak_risk", n=streak)
         await self._notify(CONF_NOTIFY_KID, self.tr("bedtime_title"), message)
 
     async def async_catch_up(self) -> None:
@@ -418,6 +626,14 @@ class ChoresManager:
             except Exception:  # noqa: BLE001
                 _LOGGER.warning("Could not send notification via notify.%s", service)
 
+    async def _send(self, notices: list[tuple[str, str, str]]) -> None:
+        """Deliver collected notices: notify targets, or "log" for the logbook."""
+        for key, title, message in notices:
+            if key == "log":
+                await self._log(message)
+            else:
+                await self._notify(key, title, message)
+
     async def _log(self, message: str) -> None:
         try:
             await self.hass.services.async_call(
@@ -451,12 +667,18 @@ class ChoresManager:
                 award = int(mandatory[task])
                 released = list(today["pending"])
                 self.data["week"] = self.week + award
+                kinds = {CHORES}
+                self._bump("chores_done")
                 self._record("chore", task, award, entry_id=group)
                 if not self.mandatory_remaining():
                     pending_sum = sum(p["points"] for p in released)
                     award = pending_sum
+                    kinds |= {DAY, BONUS} if released else {DAY}
+                    self._mark_perfect_day()
                     for p in released:
                         self.data["week_bonus"] = self.week_bonus + int(p["points"])
+                        self._bump("chores_done")
+                        self._bump("bonus_done")
                         self._record(
                             "bonus_released", p["name"], int(p["points"]), group=group
                         )
@@ -472,13 +694,17 @@ class ChoresManager:
                     award = 0
                 today["points"] += int(mandatory[task]) + award
             else:
+                kinds = set()
                 pts = int(bonus[task])
                 remaining = self.mandatory_remaining()
                 if not remaining:
                     self.data["week_bonus"] = self.week_bonus + pts
                     today["bonus_done"].append(task)
                     today["points"] += pts
-                    self._record("bonus", task, pts)
+                    kinds = {CHORES, BONUS}
+                    self._bump("chores_done")
+                    self._bump("bonus_done")
+                    self._record("bonus", task, pts, entry_id=group)
                 else:
                     today["pending"].append({"name": task, "points": pts})
                     self._record("pending", task, 0, pending=pts)
@@ -494,10 +720,10 @@ class ChoresManager:
                             ),
                         )
                     )
+            self._award_medals(kinds, group, notices)
             self._changed()
 
-        for key, title, msg in notices:
-            await self._notify(key, title, msg)
+        await self._send(notices)
 
     async def async_redeem(self, reward: str, units: int = 1) -> None:
         rate = int(self.rewards.get(reward, 0))
@@ -506,6 +732,8 @@ class ChoresManager:
         cost = rate * units
         payout = int(self.payouts.get(reward, 0)) * units
         label = reward if units == 1 else f"{units} × {reward}"
+        notices: list[tuple[str, str, str]] = []
+        group = uuid.uuid4().hex[:12]
         async with self._lock:
             bank = self.bank
             if bank < cost:
@@ -518,6 +746,7 @@ class ChoresManager:
                     # money reward: nothing to hand out, it goes to the wallet
                     self.data["wallet"] = self.wallet + payout
                 else:
+                    self._bump("treats", units)
                     reward_uid = uuid.uuid4().hex
                     self.reward_log.append(
                         {
@@ -532,8 +761,15 @@ class ChoresManager:
                         }
                     )
                 self._record(
-                    "redeem", label, -cost, "bank", amount=payout, reward_uid=reward_uid
+                    "redeem",
+                    label,
+                    -cost,
+                    "bank",
+                    amount=payout,
+                    reward_uid=reward_uid,
+                    entry_id=group,
                 )
+                self._award_medals({TREAT}, group, notices)
                 self._changed()
         if short:
             await self._notify(
@@ -558,6 +794,7 @@ class ChoresManager:
                 self.tr("cashout_kid_title"),
                 self.tr("cashout_kid", **money),
             )
+            await self._send(notices)
             return
         await self._log(self.tr("redeemed_log", label=label, cost=cost, left=left))
         await self._notify(
@@ -570,6 +807,7 @@ class ChoresManager:
             self.tr("redeemed_kid_title"),
             self.tr("redeemed_kid", label=label, left=left),
         )
+        await self._send(notices)
 
     async def async_adjust(self, target: str, points: int, reason: str | None) -> None:
         async with self._lock:
@@ -607,6 +845,8 @@ class ChoresManager:
 
     async def async_close_week(self, scheduled: date | None = None) -> None:
         """Close the week. `scheduled` is the date of the regular 23:59 close it stands in for."""
+        notices: list[tuple[str, str, str]] = []
+        group = uuid.uuid4().hex[:12]
         async with self._lock:
             # the goal is measured on mandatory points only; bonus points are
             # banked in full if it is met and lost otherwise
@@ -637,7 +877,13 @@ class ChoresManager:
                 + (f" · ★{bonus}{'' if met else ' ✗'}" if bonus else ""),
                 to_bank,
                 "bank",
+                entry_id=group,
             )
+            if self.medals_on:
+                md = self.medal_data
+                md["week_streak"] = md["week_streak"] + 1 if met else 0
+                md["best_week"] = max(md["best_week"], md["week_streak"])
+                self._award_medals({WEEK}, group, notices)
             self.data["last_week"] = self.tr(
                 "last_week",
                 week=week,
@@ -666,6 +912,7 @@ class ChoresManager:
             )
             + (f" {note}" if note else ""),
         )
+        await self._send(notices)
 
     async def async_undo(self) -> None:
         """Revert the most recent change that can still be reverted."""
@@ -715,9 +962,17 @@ class ChoresManager:
             ):
                 # never below zero, e.g. when the money was already spent
                 self.data[key] = max(self.data[key] - sum(e[delta] for e in members), 0)
+            md = self.medal_data
+            for counter in COUNTERS:
+                taken = sum(e.get("dm", {}).get(counter, 0) for e in members)
+                md[counter] = max(md[counter] - taken, 0)
             for e in reversed(members):
                 self._revert_today(e)
                 e["reverted"] = True
+                if medal := e.get("medal"):
+                    md["earned"].pop(medal, None)
+                if e["type"] == "chore" and e["day"] in md["perfect_days"]:
+                    md["perfect_days"].remove(e["day"])  # that day is no longer perfect
             if uid := entry.get("reward_uid"):
                 self.data["reward_log"] = [
                     r for r in self.reward_log if r["uid"] != uid

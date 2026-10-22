@@ -4,6 +4,7 @@
   "description": "Build and tests for the dashboard cards of the Kid Chores & Points integration",
   "type": "module",
   "scripts": {
+    "icons": "node frontend/tools/medal-icons.mjs",
     "build": "node frontend/build.mjs",
     "test": "node --test \"frontend/test/*.test.mjs\""
   },

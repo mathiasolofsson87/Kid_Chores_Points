@@ -1,0 +1,172 @@
+// Generates frontend/src/medal-icons.js: one SVG per medal, drawn from shared parts
+// (ribbon, tiered disc and a glyph). Run with `npm run icons`; the output is committed.
+import { writeFileSync } from "node:fs";
+
+const TIERS = {
+  bronze: { rim: ["#f0b684", "#9a5424"], face: ["#fbdcc0", "#e2955a"], ink: "#6b3512", hi: "#fdeedd" },
+  silver: { rim: ["#f4f7fb", "#8a95a3"], face: ["#ffffff", "#cdd5df"], ink: "#465163", hi: "#ffffff" },
+  gold: { rim: ["#ffe27a", "#c98a0a"], face: ["#fff4c2", "#f5c542"], ink: "#7a4a00", hi: "#fff8d9" },
+  diamond: { rim: ["#d4f6ff", "#2a86c8"], face: ["#f4fdff", "#7fd6f4"], ink: "#0d4572", hi: "#ecfaff", sparkle: "#4cc2ee" },
+  treat: { rim: ["#ffc2dc", "#b83d79"], face: ["#ffe6f0", "#ff8fbd"], ink: "#7d1f4d", hi: "#fff0f6" },
+};
+const RIBBON = {
+  streak: ["#f2603a", "#c23a1c"],
+  chores: ["#3b82f6", "#1f56c4"],
+  bonus: ["#8b5cf6", "#5a35c0"],
+};
+
+const f = (n) => n.toFixed(2);
+const star = (cx, cy, R, r) =>
+  Array.from({ length: 10 }, (_, i) => {
+    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+    const rad = i % 2 ? r : R;
+    return `${f(cx + rad * Math.cos(a))},${f(cy + rad * Math.sin(a))}`;
+  }).join(" ");
+const sparkle = (x, y, s, fill) =>
+  `<path d="M${x} ${y - s}Q${x} ${y} ${x + s} ${y}Q${x} ${y} ${x} ${y + s}Q${x} ${y} ${x - s} ${y}Q${x} ${y} ${x} ${y - s}Z" fill="${fill}"/>`;
+
+// Glyphs are drawn around (32,37) inside a face of radius ~17.
+const GLYPH = {
+  sprout: (k, h) => `
+    <path d="M32 49V37" stroke="${k}" stroke-width="3" stroke-linecap="round" fill="none"/>
+    <path d="M32 40C24 40 21.5 33 23 29.5C30.5 29.5 33.5 34 32 40Z" fill="${k}"/>
+    <path d="M32 37C32 30.5 36 26.5 42.5 26C43.5 32.5 39.5 37.5 32 37Z" fill="${k}"/>`,
+  calendar7: (k, h) => `
+    <rect x="21.5" y="27" width="21" height="20" rx="3.5" fill="${h}" stroke="${k}" stroke-width="2.4"/>
+    <path d="M21.5 31a3.5 3.5 0 0 1 3.5-3.5h14a3.5 3.5 0 0 1 3.5 3.5V33h-21Z" fill="${k}"/>
+    <path d="M27.5 24v5M36.5 24v5" stroke="${k}" stroke-width="2.6" stroke-linecap="round"/>
+    <path d="M27.2 37.6h9.6l-5.2 8.2" stroke="${k}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`,
+  flame: (k, h) => `
+    <path d="M32 23.5C34 30 41.5 32 41.5 40.5C41.5 46.5 37.5 50.5 32 50.5C26.5 50.5 22.5 46.5 22.5 40.5C22.5 36.5 25.5 34 26.5 30C28.5 32 30 33 31 33C31 30 30.5 27 32 23.5Z" fill="${k}"/>
+    <path d="M32 49.5C28.8 49.5 26.8 47 26.8 44.3C26.8 41.2 30 40 31 37C34.2 39 37.2 41 37.2 44.3C37.2 47.2 35.2 49.5 32 49.5Z" fill="${h}"/>`,
+  target: (k, h) => `
+    <circle cx="32" cy="37" r="12.5" fill="none" stroke="${k}" stroke-width="3"/>
+    <circle cx="32" cy="37" r="7" fill="none" stroke="${k}" stroke-width="3"/>
+    <circle cx="32" cy="37" r="2.6" fill="${k}"/>`,
+  gear: (k, h) => `
+    <g fill="${k}">
+      <rect x="29.5" y="23.5" width="5" height="27" rx="1.4"/>
+      <rect x="29.5" y="23.5" width="5" height="27" rx="1.4" transform="rotate(45 32 37)"/>
+      <rect x="29.5" y="23.5" width="5" height="27" rx="1.4" transform="rotate(90 32 37)"/>
+      <rect x="29.5" y="23.5" width="5" height="27" rx="1.4" transform="rotate(135 32 37)"/>
+      <circle cx="32" cy="37" r="9.6"/>
+    </g>
+    <circle cx="32" cy="37" r="4" fill="${h}"/>`,
+  trophy: (k, h) => `
+    <path d="M24 38V34.5H20.5C20.5 31 21 28 21.5 26.5H24" fill="none"/>
+    <path d="M24.5 27H20.2C20.2 33.5 22.5 35.8 25.8 36.4" stroke="${k}" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M39.5 27H43.8C43.8 33.5 41.5 35.8 38.2 36.4" stroke="${k}" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M24 24.5H40V32C40 38 36.2 41.5 32 41.5C27.8 41.5 24 38 24 32Z" fill="${k}"/>
+    <rect x="30" y="41" width="4" height="5.5" fill="${k}"/>
+    <rect x="25" y="46" width="14" height="4" rx="1.4" fill="${k}"/>
+    <path d="M28 28.5V32.5" stroke="${h}" stroke-width="2" stroke-linecap="round"/>`,
+  broom: (k, h) => `
+    <path d="M43 23.5L32.5 37.5" stroke="${k}" stroke-width="2.8" stroke-linecap="round"/>
+    <path d="M28.6 36.6L36.6 41.2C37.8 44.5 37 47.6 35 50.5L22.5 47.5C25 44.6 27 41 28.6 36.6Z" fill="${k}" stroke="${k}" stroke-width="1.4" stroke-linejoin="round"/>
+    <path d="M27.6 39.2L37.2 44.2" stroke="${h}" stroke-width="1.6" stroke-linecap="round"/>
+    <path d="M27 45.3L29 48.6M30.6 46.6L32 49.6M34 47.8L34.4 49.8" stroke="${h}" stroke-width="1.4" stroke-linecap="round"/>`,
+  star1: (k, h) => `<polygon points="${star(32, 37.5, 13.5, 5.6)}" fill="${k}" stroke="${k}" stroke-width="1.6" stroke-linejoin="round"/>`,
+  star3: (k, h) => `
+    <polygon points="${star(32, 32.5, 9, 3.8)}" fill="${k}" stroke="${k}" stroke-width="1.4" stroke-linejoin="round"/>
+    <polygon points="${star(23, 44.5, 5.2, 2.2)}" fill="${k}" stroke="${k}" stroke-width="1.2" stroke-linejoin="round"/>
+    <polygon points="${star(41, 44.5, 5.2, 2.2)}" fill="${k}" stroke="${k}" stroke-width="1.2" stroke-linejoin="round"/>`,
+  crown: (k, h) => `
+    <path d="M22 44L20 28.5L27 35L32 26L37 35L44 28.5L42 44Z" fill="${k}" stroke="${k}" stroke-width="1.6" stroke-linejoin="round"/>
+    <rect x="22" y="44.5" width="20" height="4.5" rx="1.6" fill="${k}"/>
+    <circle cx="26.5" cy="40" r="1.8" fill="${h}"/><circle cx="32" cy="40" r="1.8" fill="${h}"/><circle cx="37.5" cy="40" r="1.8" fill="${h}"/>`,
+  gift: (k, h) => `
+    <rect x="22" y="33.5" width="20" height="15" rx="2" fill="${k}"/>
+    <rect x="20" y="29.5" width="24" height="6" rx="1.8" fill="${k}"/>
+    <rect x="30" y="29.5" width="4" height="19" fill="${h}"/>
+    <path d="M32 29.5C28.5 22.5 22 24.5 24.5 28C25.5 29.2 29.5 29.5 32 29.5Z" fill="${h}" stroke="${k}" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M32 29.5C35.5 22.5 42 24.5 39.5 28C38.5 29.2 34.5 29.5 32 29.5Z" fill="${h}" stroke="${k}" stroke-width="1.5" stroke-linejoin="round"/>`,
+  chevrons: (k, h) => `
+    <path d="M24 28.5L32.5 37L24 45.5M33.5 28.5L42 37L33.5 45.5" fill="none" stroke="${k}" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/>`,
+  bolt: (k, h) => `<polygon points="35.5,23.5 23.5,38.5 31,38.5 28,50.5 41,34 33,34" fill="${k}" stroke="${k}" stroke-width="1.6" stroke-linejoin="round"/>`,
+  rocket: (k, h) => `
+    <path d="M32 23.5C38.5 28.5 38.5 37.5 36.5 43H27.5C25.5 37.5 25.5 28.5 32 23.5Z" fill="${k}"/>
+    <path d="M28 37.5L21.5 44L28 43ZM36 37.5L42.5 44L36 43Z" fill="${k}"/>
+    <circle cx="32" cy="32" r="3.2" fill="${h}"/>
+    <path d="M29.6 44.6C30 48 31 50 32 52C33 50 34 48 34.4 44.6Z" fill="#ff7a1a" stroke="${k}" stroke-width="1" stroke-linejoin="round"/>`,
+  comet: (k, h) => `
+    <path d="M33.5 26.5C27 31.5 22 39.5 20 50C30.5 47.5 38.5 42.5 43.5 35.5Z" fill="${k}" fill-opacity=".78"/>
+    <circle cx="38.5" cy="31" r="8" fill="${k}"/>
+    <circle cx="36.2" cy="28.8" r="2.3" fill="${h}"/>
+    <path d="M28.5 39.5L24 46M33 41.5L28 47" stroke="${h}" stroke-width="1.5" stroke-linecap="round"/>`,
+  planet: (k, h) => `
+    <g transform="rotate(-22 32 37)">
+      <ellipse cx="32" cy="37" rx="15.5" ry="4.8" fill="none" stroke="${k}" stroke-width="2.6"/>
+      <circle cx="32" cy="37" r="8.2" fill="${k}"/>
+      <path d="M16.5 37A15.5 4.8 0 0 0 47.5 37" fill="none" stroke="${h}" stroke-width="1.3"/>
+    </g>`,
+  summit: (k, h) => `
+    <path d="M19.5 49L28.5 33.5L32.5 39.5L37.5 31L44.5 49Z" fill="${k}" stroke="${k}" stroke-width="1.6" stroke-linejoin="round"/>
+    <path d="M26.5 37L28.5 33.5L31 37.5L29 38.5ZM35.5 34.5L37.5 31L39.5 34.5L37.5 35.5Z" fill="${h}"/>
+    <path d="M37.5 31V23.5" stroke="${k}" stroke-width="2" stroke-linecap="round"/>
+    <path d="M37.5 24L44 26.2L37.5 28.8Z" fill="${k}" stroke="${k}" stroke-width="1" stroke-linejoin="round"/>`,
+  shield: (k, h) => `
+    <path d="M32 23.5L43.5 27.5V36.5C43.5 43 38.5 47.5 32 50.5C25.5 47.5 20.5 43 20.5 36.5V27.5Z" fill="${k}" stroke="${k}" stroke-width="1.6" stroke-linejoin="round"/>
+    <polygon points="${star(32, 37.5, 7.2, 3)}" fill="${h}"/>`,
+};
+
+// [medal id (as in the integration), ribbon group, tier, glyph]
+const MEDALS = [
+  ["day_3", "streak", "bronze", "sprout"],
+  ["day_7", "streak", "silver", "calendar7"],
+  ["day_14", "streak", "gold", "flame"],
+  ["day_30", "streak", "diamond", "comet"],
+  ["week_10", "streak", "bronze", "target"],
+  ["week_12", "streak", "silver", "gear"],
+  ["week_16", "streak", "gold", "summit"],
+  ["week_20", "streak", "diamond", "trophy"],
+  ["chores_25", "chores", "bronze", "broom"],
+  ["chores_100", "chores", "silver", "star1"],
+  ["chores_250", "chores", "gold", "star3"],
+  ["chores_500", "chores", "diamond", "crown"],
+  ["chores_1000", "chores", "diamond", "shield"],
+  ["first_treat", "chores", "treat", "gift"],
+  ["bonus_10", "bonus", "bronze", "chevrons"],
+  ["bonus_50", "bonus", "silver", "bolt"],
+  ["bonus_100", "bonus", "gold", "rocket"],
+  ["bonus_250", "bonus", "diamond", "planet"],
+];
+
+// __U__ is replaced by a number per rendered icon (gradient ids must be unique on a page),
+// __S__ by the size in pixels.
+function medalSvg(ribbon, tier, glyph) {
+  const t = TIERS[tier];
+  const rb = RIBBON[ribbon];
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="__S__" height="__S__" aria-hidden="true" focusable="false">
+<defs>
+<linearGradient id="m__U__r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${t.rim[0]}"/><stop offset="1" stop-color="${t.rim[1]}"/></linearGradient>
+<radialGradient id="m__U__f" cx="0.35" cy="0.3" r="0.9"><stop offset="0" stop-color="${t.face[0]}"/><stop offset="1" stop-color="${t.face[1]}"/></radialGradient>
+</defs>
+<polygon points="17,3 30,3 37,27 24,27" fill="${rb[0]}"/>
+<polygon points="34,3 47,3 40,27 27,27" fill="${rb[1]}"/>
+${t.sparkle ? sparkle(54, 20, 4.5, t.sparkle) + sparkle(58.5, 31, 2.6, t.sparkle) + sparkle(8, 24, 3.4, t.sparkle) : ""}
+<circle cx="32" cy="38" r="21" fill="url(#m__U__r)" stroke="${t.ink}" stroke-opacity=".35" stroke-width="1"/>
+<circle cx="32" cy="38" r="17.5" fill="url(#m__U__f)" stroke="#fff" stroke-opacity=".55" stroke-width="1"/>
+<path d="M17.9 32.9A15 15 0 0 1 26.9 23.9" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.2" stroke-linecap="round"/>
+<g transform="translate(0 1)">${GLYPH[glyph](t.ink, t.hi)}</g>
+</svg>`;
+}
+
+const squash = (svg) => svg.replace(/\n\s*/g, "");
+const entries = MEDALS.map(([id, ribbon, tier, glyph]) => `  ${id}: \`${squash(medalSvg(ribbon, tier, glyph))}\`,`);
+writeFileSync(
+  new URL("../src/medal-icons.js", import.meta.url),
+  `/* GENERATED by frontend/tools/medal-icons.mjs (npm run icons) - do not edit. */
+const KCP_MEDAL_SVG = {
+${entries.join("\n")}
+};
+
+let kcpMedalUid = 0;
+
+/* The SVG of a medal (by its id in the integration) at \`size\` pixels, or "". */
+export const kcpMedalSvg = (id, size = 64) => {
+  const svg = KCP_MEDAL_SVG[id];
+  return svg ? svg.replaceAll("__U__", String(++kcpMedalUid)).replaceAll("__S__", String(size)) : "";
+};
+`
+);
+console.log("wrote", MEDALS.length, "medal icons");

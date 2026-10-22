@@ -114,3 +114,36 @@ async def test_service_rejects_bad_input(hass, entry):
 async def test_entry_unloads_cleanly(hass, entry):
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def test_streak_and_medal_sensors_exist_and_follow_the_setting(hass, entry):
+    def sensor(key):
+        return next(
+            s
+            for s in hass.states.async_all("sensor")
+            if s.attributes.get("key") == key
+        )
+
+    for key in (
+        "day_streak",
+        "week_streak",
+        "medals",
+        "chores_done",
+        "bonus_chores_done",
+    ):
+        assert sensor(key).state == "0"
+    assert sensor("medals").attributes["enabled"] is False
+    assert len(sensor("medals").attributes["medals"]) == 18
+
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.options, "medals_enabled": True}
+    )
+    await hass.async_block_till_done()  # the entry reloads on an options change
+    await hass.services.async_call(
+        DOMAIN, "complete_chore", {"name": "Dishes"}, blocking=True
+    )
+    await hass.async_block_till_done()
+    assert sensor("day_streak").state == "1"
+    assert sensor("day_streak").attributes["enabled"] is True
+    assert sensor("day_streak").attributes["next"]["id"] == "day_3"
+    assert sensor("chores_done").state == "1"

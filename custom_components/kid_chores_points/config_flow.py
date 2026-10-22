@@ -16,6 +16,7 @@ from homeassistant.config_entries import (
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.util import dt as dt_util
 from homeassistant.helpers.selector import (
+    BooleanSelector,
     EntitySelector,
     EntitySelectorConfig,
     NumberSelector,
@@ -41,6 +42,10 @@ from .const import (
     CONF_HISTORY_LIMIT,
     CONF_KID_PERSONS,
     CONF_MANDATORY,
+    CONF_MEDAL_RULES,
+    CONF_MEDALS,
+    CONF_MEDALS_GRACE,
+    CONF_MEDALS_NOTIFY,
     CONF_NOTIFY_KID,
     CONF_NOTIFY_PARENTS,
     CONF_PARENT_PERSONS,
@@ -52,10 +57,12 @@ from .const import (
     DOMAIN,
     HISTORY_LIMIT_MAX,
     HISTORY_LIMIT_MIN,
+    MEDAL_BONUS_MAX,
     MS_DOMAIN,
     POLICIES,
     WEEK_DAYS,
 )
+from .medals import AT_MAX, GROUPS, group_medals, medal_rules
 
 
 def _points(max_: int = 5000) -> NumberSelector:
@@ -151,6 +158,7 @@ class ChoresOptionsFlow(OptionsFlow):
                 "bonus",
                 "rewards",
                 "settings",
+                "medals",
                 "bedtime",
                 "notifications",
                 "finish",
@@ -218,6 +226,95 @@ class ChoresOptionsFlow(OptionsFlow):
                 }
             ),
         )
+
+    # ------------------------------------------------------------------
+    # Streaks and medals
+    # ------------------------------------------------------------------
+    async def async_step_medals(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        self._load()
+        return self.async_show_menu(
+            step_id="medals",
+            menu_options=["medals_settings", *(f"medals_{g}" for g in GROUPS), "init"],
+        )
+
+    async def async_step_medals_settings(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        opts = self._load()
+        if user_input is not None:
+            for key in (CONF_MEDALS, CONF_MEDALS_GRACE, CONF_MEDALS_NOTIFY):
+                opts[key] = bool(user_input.get(key, False))
+            self._save()
+            return await self.async_step_medals()
+        return self.async_show_form(
+            step_id="medals_settings",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_MEDALS, default=opts[CONF_MEDALS]): BooleanSelector(),
+                    vol.Required(
+                        CONF_MEDALS_GRACE, default=opts[CONF_MEDALS_GRACE]
+                    ): BooleanSelector(),
+                    vol.Required(
+                        CONF_MEDALS_NOTIFY, default=opts[CONF_MEDALS_NOTIFY]
+                    ): BooleanSelector(),
+                }
+            ),
+        )
+
+    async def _medal_group(
+        self, group: str, user_input: dict[str, Any] | None
+    ) -> ConfigFlowResult:
+        """One form with the target (and bonus) of each medal in a group."""
+        opts = self._load()
+        rules = medal_rules(opts[CONF_MEDAL_RULES])
+        medals = group_medals(group)
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            targets = [int(user_input[f"{m.id}_at"]) for m in medals]
+            if any(a >= b for a, b in zip(targets, targets[1:])):
+                errors["base"] = "medal_order"  # each medal needs more than the one before
+            else:
+                for medal, at in zip(medals, targets):
+                    own = {"at": at}
+                    if medal.pays:
+                        own["bonus"] = int(user_input[f"{medal.id}_bonus"])
+                    opts[CONF_MEDAL_RULES][medal.id] = own
+                self._save()
+                return await self.async_step_medals()
+        schema: dict[Any, Any] = {}
+        for medal in medals:
+            at, bonus = rules[medal.id]
+            if user_input is not None:  # keep what was typed when the form is shown again
+                at = user_input.get(f"{medal.id}_at", at)
+                bonus = user_input.get(f"{medal.id}_bonus", bonus)
+            schema[vol.Required(f"{medal.id}_at", default=at)] = NumberSelector(
+                NumberSelectorConfig(
+                    min=1, max=AT_MAX[group], step=1, mode=NumberSelectorMode.BOX
+                )
+            )
+            if medal.pays:
+                schema[vol.Required(f"{medal.id}_bonus", default=bonus)] = _points(
+                    MEDAL_BONUS_MAX
+                )
+        return self.async_show_form(
+            step_id=f"medals_{group}",
+            data_schema=vol.Schema(schema),
+            errors=errors,
+        )
+
+    async def async_step_medals_day(self, user_input=None) -> ConfigFlowResult:
+        return await self._medal_group("day", user_input)
+
+    async def async_step_medals_week(self, user_input=None) -> ConfigFlowResult:
+        return await self._medal_group("week", user_input)
+
+    async def async_step_medals_chores(self, user_input=None) -> ConfigFlowResult:
+        return await self._medal_group("chores", user_input)
+
+    async def async_step_medals_bonus(self, user_input=None) -> ConfigFlowResult:
+        return await self._medal_group("bonus", user_input)
 
     async def async_step_bedtime(
         self, user_input: dict[str, Any] | None = None

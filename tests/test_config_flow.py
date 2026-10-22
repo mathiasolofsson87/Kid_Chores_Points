@@ -8,11 +8,15 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from homeassistant import config_entries
-from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.data_entry_flow import FlowResultType, InvalidData
 
 from custom_components.kid_chores_points.const import (
     CONF_CHORE_IDS,
     CONF_MANDATORY,
+    CONF_MEDAL_RULES,
+    CONF_MEDALS,
+    CONF_MEDALS_GRACE,
+    CONF_MEDALS_NOTIFY,
     DEFAULT_OPTIONS,
     DOMAIN,
 )
@@ -159,3 +163,74 @@ async def test_editing_never_changes_the_shared_defaults(hass, entry, ms_tasks):
     await _step(hass, result["flow_id"], {"name": "Walk the dog", "points": 5})
     assert DEFAULT_OPTIONS[CONF_MANDATORY] == {}
     assert DEFAULT_OPTIONS[CONF_CHORE_IDS] == {}
+
+
+# ----------------------------------------------------------------------
+# Streaks and medals
+# ----------------------------------------------------------------------
+async def test_medals_are_off_until_switched_on(hass, entry):
+    assert entry.options[CONF_MEDALS] is False
+    result = await _open(hass, entry, "medals", "medals_settings")
+    await _step(
+        hass,
+        result["flow_id"],
+        {CONF_MEDALS: True, CONF_MEDALS_GRACE: True, CONF_MEDALS_NOTIFY: False},
+    )
+    assert entry.options[CONF_MEDALS] is True
+    assert entry.options[CONF_MEDALS_GRACE] is True
+    assert entry.options[CONF_MEDALS_NOTIFY] is False
+
+
+async def test_day_streak_targets_and_bonuses_are_saved(hass, entry):
+    result = await _open(hass, entry, "medals", "medals_day")
+    fields = {str(k) for k in result["data_schema"].schema}
+    assert fields == {
+        f"day_{n}_{part}" for n in (3, 7, 14, 30) for part in ("at", "bonus")
+    }
+    await _step(
+        hass,
+        result["flow_id"],
+        {
+            "day_3_at": 2, "day_3_bonus": 5,
+            "day_7_at": 5, "day_7_bonus": 12,
+            "day_14_at": 14, "day_14_bonus": 20,
+            "day_30_at": 30, "day_30_bonus": 50,
+        },
+    )  # fmt: skip
+    rules = entry.options[CONF_MEDAL_RULES]
+    assert rules["day_3"] == {"at": 2, "bonus": 5}
+    assert rules["day_7"] == {"at": 5, "bonus": 12}
+    assert DEFAULT_OPTIONS[CONF_MEDAL_RULES] == {}
+
+
+async def test_a_bonus_above_the_cap_is_refused(hass, entry):
+    result = await _open(hass, entry, "medals", "medals_day")
+    with pytest.raises(InvalidData):
+        await _step(
+            hass,
+            result["flow_id"],
+            {
+                "day_3_at": 3, "day_3_bonus": 51,
+                "day_7_at": 7, "day_7_bonus": 10,
+                "day_14_at": 14, "day_14_bonus": 20,
+                "day_30_at": 30, "day_30_bonus": 40,
+            },
+        )  # fmt: skip
+    assert entry.options[CONF_MEDAL_RULES] == {}
+
+
+async def test_targets_must_grow_from_one_medal_to_the_next(hass, entry):
+    result = await _open(hass, entry, "medals", "medals_week")
+    result = await _step(
+        hass,
+        result["flow_id"],
+        {
+            "week_10_at": 10, "week_10_bonus": 50,
+            "week_12_at": 10, "week_12_bonus": 50,
+            "week_16_at": 16, "week_16_bonus": 50,
+            "week_20_at": 20, "week_20_bonus": 50,
+        },
+    )  # fmt: skip
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "medal_order"}
+    assert entry.options[CONF_MEDAL_RULES] == {}

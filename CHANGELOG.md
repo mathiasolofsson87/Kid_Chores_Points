@@ -2,6 +2,13 @@
 
 All notable changes to Kid Chores & Points. Versions match the git tags and the GitHub releases.
 
+## 1.7.0 – 2026-10-22
+
+### Added
+- **Streaks and medals.** Optional (Configure → *Streaks & medals*). A **day streak** counts days in a row with every mandatory chore done (today only counts against you once it is over; an optional *forgive one missed day per week*), a **week streak** counts weeks in a row where the goal was reached. 18 **medals** in four tiers (bronze, silver, gold, diamond) are earned for streaks, total chores done and bonus chores done, plus *Treat Yourself!* for the first reward handed out. Streak, chore-count and bonus-chore medals pay bonus points (at most 50) straight into the bank; *Treat Yourself!* is honorary. Targets and bonuses are editable per group; each medal is earned once and reverting the change that earned it takes it back (a closed week can't be reverted). Notifications for the child and the parents, logbook entries, and a "🔥 streak at risk" line in the bedtime reminder. English and Swedish names ("Little Sprout" / "Lilla Grodden", ...).
+- **Medals card** (`kid-chores-medals-card`): every earned medal with its date and a NEW tag, plus the next one to earn in each kind with what to do, progress and the bonus; a *Show all medals* button reveals the rest. The **Status card** gets one streak tile (the day or week streak that is closest to its next medal), and the **History card** shows medals.
+- New sensors: day streak, week streak, medals, chores done and bonus chores done.
+
 ## 1.6.2 – 2026-10-22
 
 ### Changed

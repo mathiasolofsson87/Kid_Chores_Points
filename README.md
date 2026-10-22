@@ -58,6 +58,25 @@ Under Configure → *Bedtime reminder*, set the **School nights** bedtime and ho
 
 An optional **Weekend** bedtime applies on Fridays and Saturdays, the nights before a day off; leave it empty to use the school-night bedtime every night. Clear both times to turn the reminder off. The reminder has to fall on the same evening as the bedtime, so a bedtime just after midnight with a long lead time is refused. The child needs a **person** set under Notifications (or an extra child `notify` service) to receive it.
 
+## Streaks and medals
+
+Optional. Turn it on under Configure → *Streaks & medals* → *Settings*. Counting starts at that moment (chores done earlier don't count), and turning it off pauses counting but keeps what was earned.
+
+- **Day streak:** days in a row on which every mandatory chore is done. Today doesn't break the streak until it is over, so a streak that ran through yesterday still counts. The optional *Forgive one missed day per week* keeps a streak alive over one missed day in each week (the missed day isn't counted).
+- **Week streak:** weeks in a row where the weekly goal is reached (checked when the week closes).
+- **Medals:** 18 in total, each with a tier (bronze, silver, gold, diamond) and its own icon and name:
+
+| Group | Counts | Medals (targets are the defaults) |
+|---|---|---|
+| Day streaks | days in a row | 3, 7, 14, 30 |
+| Week streaks | weeks in a row | 10, 12, 16, 20 |
+| Chores done | chores in total | 25, 100, 250, 500, 1000, plus *Treat Yourself!* for the first reward handed out (a cash-out doesn't count) |
+| Bonus chores | bonus chores in total | 10, 50, 100, 250 |
+
+Day- and week-streak, chore and bonus-chore medals pay **bonus points straight into the bank** (never more than 50 each); *Treat Yourself!* is honorary. Defaults range from 5 up to 50 points. Under *Streaks & medals* each group has its own page where you change the target and the bonus of every medal (each target must be higher than the one above it). Medals are earned once: if a streak breaks and starts over, a medal that was already earned isn't paid again. Reverting the change that earned a medal (see [Undo and revert](#undo-and-revert)) takes the medal and its bonus back; a medal for a closed week can't be reverted. Once earned, a medal stays earned even if you later raise its target.
+
+The child and the parents get a notification when a medal is earned (switch off under *Settings*), the logbook and History card show it, and the bedtime reminder adds "🔥 Your 5-day streak is at risk!" when a streak is running and chores are still open. Medals only show on the dashboard when they make sense: bonus-chore medals need a bonus chore, and *Treat Yourself!* needs a reward that is handed out (not just cash-outs).
+
 ## Undo and revert
 
 Tapped the wrong chore or redeemed the wrong reward? Every change in the **History card** has a small revert button (↩) – tap it, confirm, and that change is undone, however long ago it was made and whatever has happened since. The `revert` service does the same for a history entry `id` (shown in the *Points history* sensor's `history` attribute), and `undo` reverts the latest change that can still be reverted.
@@ -86,7 +105,7 @@ Notifications, logbook entries and the "last week result" text use the Home Assi
 
 ## Entities (per tracker)
 
-- **Sensors:** points this week (mandatory only), bonus points this week, points bank, **wallet** (unit = your currency), weekly goal, points to goal, week progress, points today, mandatory chores remaining (attributes list remaining/done chores and the configured chores), pending bonus points, points history (the `history` attribute holds the timeline), last week result.
+- **Sensors:** points this week (mandatory only), bonus points this week, points bank, **wallet** (unit = your currency), weekly goal, points to goal, week progress, points today, mandatory chores remaining (attributes list remaining/done chores and the configured chores), pending bonus points, points history (the `history` attribute holds the timeline), last week result. With streaks and medals: **day streak** and **week streak** (best streak, whether it is at risk, the next medal), **medals** (the number earned; the `medals` attribute lists every medal with its target, bonus, progress and date earned), **chores done** and **bonus chores done**.
 - **Binary sensors:** mandatory chores complete, and `can afford <reward>` for each reward (attributes: cost, payout, bank).
 - **To-do:** redeemed rewards.
 
@@ -115,6 +134,7 @@ The integration ships its own dashboard cards – no extra install or resource s
 | Bonus chores | child | Bonus chores, unlocked when the mandatory ones are done |
 | Rewards | child | Redeem rewards and cash out points |
 | Wallet | child | Current money and recent activity |
+| Medals | child | Streaks and medals: earned ones, and what to do for the next |
 | Adjust points | parent | Add or deduct points in the bank/week or money in the wallet |
 | History | parent | Timeline of every change |
 
@@ -122,7 +142,7 @@ With several trackers, pick which one in each card's editor (`device:`). If a ca
 
 ### Status card
 
-Shows one child's overview: the weekly goal, a progress bar towards it (red < 50 %, yellow ≥ 50 %, green at 100 %), the bonus points collected so far this week right under the bar ("banked when the goal is reached", or "will be banked" once the goal is met; shown when you have bonus chores), tiles for *this week* (mandatory points), *left to goal*, *today* (all points) and the *points bank*, the *wallet* once it is in use (a cash-out reward is configured, or there is money in it), and last week's result once there is one. `title:` is optional.
+Shows one child's overview: the weekly goal, a progress bar towards it (red < 50 %, yellow ≥ 50 %, green at 100 %), the bonus points collected so far this week right under the bar ("banked when the goal is reached", or "will be banked" once the goal is met; shown when you have bonus chores), tiles for *this week* (mandatory points), *left to goal*, *today* (all points) and the *points bank*, the *wallet* once it is in use (a cash-out reward is configured, or there is money in it), and last week's result once there is one. With [streaks and medals](#streaks-and-medals) turned on it also shows one streak tile: the day or week streak that is closest to its next medal (a week counts as 7 days), how far off that medal is, and a warning when the day streak is at risk. `title:` is optional.
 
 Optional shortcut chips (YAML only), e.g. a button to the parents' view that only some users see:
 
@@ -134,6 +154,10 @@ chips:
     navigation_path: parents
     users: [<ha user id>, <ha user id>]   # omit to show to everyone
 ```
+
+### Medals card
+
+The child's medals, grouped as *Streaks*, *Chores* and *Bonus chores*. It shows every earned medal in colour with the date it was earned (and a **NEW** tag for two days), plus the next one still to earn in each kind, greyed out with what to do, how far along the child is and what it pays. A **Show all medals** button reveals the rest. Groups that don't apply to your setup are left out. It says how to switch the feature on while it is off. `title:` is optional.
 
 ### Chores to do card
 

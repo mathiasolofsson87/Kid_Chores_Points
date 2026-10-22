@@ -14,6 +14,7 @@ const KCP_HISTORY = {
   wallet: ["mdi:wallet", "#64d2ff"],
   week_close: ["mdi:flag-checkered", "#bf5af2"],
   undo: ["mdi:undo-variant", "#8e8e93"],
+  medal: ["mdi:medal", "#ffd60a"],
 };
 
 class KidChoresHistoryCard extends HTMLElement {
@@ -127,7 +128,7 @@ class KidChoresHistoryCard extends HTMLElement {
             ${note}
             ${balances ? `<div class="sub">${kcpEsc(kcpT(h, r.week_bonus ? "h_balances_bonus" : "h_balances", { w: r.week, x: r.week_bonus, b: r.bank }) + (r.wallet !== undefined && S?.wallet?.attributes.enabled ? ` · ${kcpT(h, "wallet_title")} ${r.wallet} ${cur}` : ""))}</div>` : ""}
           </div>
-          <div class="pts ${cls}">${sign}${pts} ${kcpEsc(unit)}${kcpEsc(where)}${gain ? `<div class="gain">${kcpEsc(gain)}</div>` : ""}</div>
+          <div class="pts ${cls}">${r.type === "medal" && !pts ? "" : `${sign}${pts} ${kcpEsc(unit)}${kcpEsc(where)}`}${gain ? `<div class="gain">${kcpEsc(gain)}</div>` : ""}</div>
           ${side}
         </div>`;
     }
