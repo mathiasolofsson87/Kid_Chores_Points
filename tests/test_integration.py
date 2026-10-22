@@ -54,6 +54,7 @@ async def test_services_are_registered(hass, entry):
         "adjust_wallet",
         "close_week",
         "undo",
+        "revert",
     ):
         assert hass.services.has_service(DOMAIN, service)
 

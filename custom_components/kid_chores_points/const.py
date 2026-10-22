@@ -61,7 +61,6 @@ DEFAULT_OPTIONS = {
 HISTORY_LIMIT = 300  # default number of entries kept in the points history
 HISTORY_LIMIT_MIN = 50
 HISTORY_LIMIT_MAX = 1000  # the whole history is an attribute of one sensor
-UNDO_LIMIT = 10  # how many changes can be undone, one after another
 
 SIGNAL_UPDATE = f"{DOMAIN}_update_{{}}"
 
@@ -72,4 +71,5 @@ SERVICE_ADJUST = "adjust_points"
 SERVICE_ADJUST_WALLET = "adjust_wallet"
 SERVICE_CLOSE_WEEK = "close_week"
 SERVICE_UNDO = "undo"
+SERVICE_REVERT = "revert"
 ATTR_ENTRY = "config_entry"

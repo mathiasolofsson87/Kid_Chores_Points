@@ -2,6 +2,11 @@
 
 All notable changes to Kid Chores & Points. Versions match the git tags and the GitHub releases.
 
+## 1.6.2 – 2026-10-22
+
+### Changed
+- **Revert any change, not just the latest.** Every entry in the History card now has a revert button (with a confirmation), replacing the single *Undo* button. Reverting takes back exactly what that entry changed, however long ago, and the entry is marked *Reverted*. New `kid_chores_points.revert` service (by history entry `id`); `undo` now reverts the latest change that can still be reverted. Chores and bonuses from a closed week can't be reverted, and entries made before 1.6.2 have no button. The old limit of 10 steps is gone.
+
 ## 1.6.1 – 2026-10-22
 
 ### Fixed

@@ -25,6 +25,7 @@ from .const import (
     SERVICE_CLOSE_WEEK,
     SERVICE_COMPLETE,
     SERVICE_REDEEM,
+    SERVICE_REVERT,
     SERVICE_UNDO,
 )
 from .manager import ChoresManager
@@ -83,6 +84,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     async def undo(call: ServiceCall) -> None:
         await _manager(hass, call).async_undo()
 
+    async def revert(call: ServiceCall) -> None:
+        await _manager(hass, call).async_revert(call.data["id"])
+
     hass.services.async_register(
         DOMAIN,
         SERVICE_COMPLETE,
@@ -132,6 +136,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         DOMAIN, SERVICE_CLOSE_WEEK, close_week, vol.Schema(_BASE)
     )
     hass.services.async_register(DOMAIN, SERVICE_UNDO, undo, vol.Schema(_BASE))
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_REVERT,
+        revert,
+        vol.Schema({**_BASE, vol.Required("id"): cv.string}),
+    )
     return True
 
 

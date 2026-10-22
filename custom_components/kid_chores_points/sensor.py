@@ -129,7 +129,9 @@ SENSORS: tuple[ChoresSensorDescription, ...] = (
         icon="mdi:timeline-clock",
         value_fn=lambda m: len(m.history),
         attrs_fn=lambda m: {
-            "history": list(reversed(m.history)),
+            "history": [
+                {**e, "can_revert": m.can_revert(e)} for e in reversed(m.history)
+            ],
             "undo_label": m.undo_label,
         },
     ),

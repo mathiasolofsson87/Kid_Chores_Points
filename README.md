@@ -58,9 +58,11 @@ Under Configure → *Bedtime reminder*, set the **School nights** bedtime and ho
 
 An optional **Weekend** bedtime applies on Fridays and Saturdays, the nights before a day off; leave it empty to use the school-night bedtime every night. Clear both times to turn the reminder off. The reminder has to fall on the same evening as the bedtime, so a bedtime just after midnight with a long lead time is refused. The child needs a **person** set under Notifications (or an extra child `notify` service) to receive it.
 
-## Undo
+## Undo and revert
 
-Tapped the wrong chore or redeemed the wrong reward? The **History card** shows an *Undo* button for the latest change, and the `undo` service does the same. It reverts a completed chore (including any held bonus points it released), a redemption or cash-out (points back to the bank, the reward removed from the *Redeemed rewards* list, the money taken back from the wallet) or a manual adjustment. It can be repeated to step back through the last 10 changes. Closing the week clears the list, since a closed week can't be reopened. Each undo is added to the history and logbook and the parents get a notification.
+Tapped the wrong chore or redeemed the wrong reward? Every change in the **History card** has a small revert button (↩) – tap it, confirm, and that change is undone, however long ago it was made and whatever has happened since. The `revert` service does the same for a history entry `id` (shown in the *Points history* sensor's `history` attribute), and `undo` reverts the latest change that can still be reverted.
+
+Reverting takes back exactly what that entry changed: a completed chore (including any held bonus points it released, and it can then be completed again), a redemption or cash-out (points back to the bank, the reward removed from the *Redeemed rewards* list, the money taken back from the wallet) or a manual adjustment. Balances never go below zero, so reverting a gift the child has already spent takes back only what is left. Chores and bonuses from a week that has been closed can't be reverted, since a closed week can't be reopened. Each revert is added to the history (the original entry is struck through and marked *Reverted*) and the logbook, and the parents get a notification. Entries made before this feature existed have no revert button.
 
 ## Wallet
 
@@ -97,7 +99,8 @@ Notifications, logbook entries and the "last week result" text use the Home Assi
 | `kid_chores_points.adjust_points` | `target` (week/bank), `points` (±), `reason` |
 | `kid_chores_points.adjust_wallet` | `amount` (±, whole numbers), `reason` |
 | `kid_chores_points.close_week` | Close the week now |
-| `kid_chores_points.undo` | Undo the latest completed chore, redemption or adjustment (see [Undo](#undo)) |
+| `kid_chores_points.undo` | Revert the latest change that can still be reverted (see [Undo and revert](#undo-and-revert)) |
+| `kid_chores_points.revert` | Revert any history entry by its `id` (see [Undo and revert](#undo-and-revert)) |
 
 With more than one tracker, pass `config_entry` to pick which one.
 
@@ -174,7 +177,7 @@ A parent tool in one card: choose **Bank**, **This week** (the mandatory points 
 
 ### History card
 
-A parent timeline of every change, newest first and grouped by day: completed chores, bonus chores (including ones held as pending and later released), redeemed rewards and cash-outs (with the money received), manual adjustments of points and the wallet with their reason, and week closes. Each entry shows the amount, the reason/label and (optionally) the week (with bonus), bank and wallet balance afterwards. Undone changes appear as *Undone* entries, and the card shows an *Undo* button for the latest change. The number of changes kept is set in Configure (default 300). Options (YAML): `limit` (entries per page, default 30), `show_balances: false` to hide the balances, `title`, `device`. The data is also available as the `history` attribute of the *Points history* sensor.
+A parent timeline of every change, newest first and grouped by day: completed chores, bonus chores (including ones held as pending and later released), redeemed rewards and cash-outs (with the money received), manual adjustments of points and the wallet with their reason, and week closes. Each entry shows the amount, the reason/label and (optionally) the week (with bonus), bank and wallet balance afterwards. Each change has a revert button; reverted changes are struck through and an *Undone* entry is added. The number of changes kept is set in Configure (default 300). Options (YAML): `limit` (entries per page, default 30), `show_balances: false` to hide the balances, `title`, `device`. The data is also available as the `history` attribute of the *Points history* sensor.
 
 ## Development
 

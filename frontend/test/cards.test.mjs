@@ -23,6 +23,9 @@ test("every card is offered in the dashboard card picker", () => {
 // History card and Undo
 // ---------------------------------------------------------------------
 const entry = (extra = {}) => ({
+  id: "e1",
+  group: "e1",
+  can_revert: true,
   t: "2026-10-21T10:00:00+00:00",
   type: "chore",
   label: "Dishes",
@@ -37,45 +40,64 @@ const entry = (extra = {}) => ({
   ...extra,
 });
 
-const historyHass = (history, undoLabel) =>
+const historyHass = (history) =>
   makeHass({
     sensors: {
       points_bank: {},
-      points_history: { state: String(history.length), attributes: { history, undo_label: undoLabel } },
+      points_history: { state: String(history.length), attributes: { history } },
     },
   });
 
-test("history card shows an Undo button for the latest change", async () => {
-  const hass = historyHass([entry()], "Dishes");
+test("every revertable history entry has a revert button that asks first", async () => {
+  const history = [entry({ id: "e2", group: "e2", label: "Trash" }), entry()];
+  const hass = historyHass(history);
   const card = await mount(win, "kid-chores-history-card", {}, hass);
-  const button = card.shadowRoot.querySelector(".undo");
-  assert.ok(button);
-  assert.match(button.textContent, /Undo: Dishes/);
-  button.click();
+  const buttons = card.shadowRoot.querySelectorAll(".rev");
+  assert.equal(buttons.length, 2);
+  buttons[1].click(); // the older entry, not the latest
+  assert.match(card.shadowRoot.textContent, /Revert "Dishes"\?/);
+  assert.deepEqual(hass.calls, []);
+  card.shadowRoot.querySelector(".yes").click();
   await new Promise((r) => setTimeout(r, 0));
   assert.deepEqual(hass.calls, [
-    { domain: "kid_chores_points", service: "undo", data: { config_entry: "entry-1" } },
+    { domain: "kid_chores_points", service: "revert", data: { id: "e1", config_entry: "entry-1" } },
   ]);
 });
 
-test("history card has no Undo button when nothing can be undone", async () => {
-  const card = await mount(win, "kid-chores-history-card", {}, historyHass([entry()], null));
-  assert.equal(card.shadowRoot.querySelector(".undo"), null);
+test("declining the confirmation reverts nothing", async () => {
+  const hass = historyHass([entry()]);
+  const card = await mount(win, "kid-chores-history-card", {}, hass);
+  card.shadowRoot.querySelector(".rev").click();
+  card.shadowRoot.querySelector(".no").click();
+  assert.deepEqual(hass.calls, []);
+  assert.ok(card.shadowRoot.querySelector(".rev"));
+});
+
+test("entries that can't be reverted have no button; reverted ones are marked", async () => {
+  const history = [
+    entry({ id: "e3", group: "e3", can_revert: false, type: "week_close", label: "20/50" }),
+    entry({ id: "e2", group: "e2", can_revert: false, reverted: true, label: "Trash" }),
+    entry({ id: "e1b", group: "e1", can_revert: false, type: "bonus_released", label: "Vacuum" }),
+  ];
+  const card = await mount(win, "kid-chores-history-card", {}, historyHass(history));
+  assert.equal(card.shadowRoot.querySelector(".rev"), null);
+  assert.equal(card.shadowRoot.querySelectorAll(".row.reverted").length, 1);
+  assert.match(card.shadowRoot.textContent, /Reverted/);
 });
 
 test("history card lists undone changes", async () => {
-  const history = [entry({ type: "undo", label: "Dishes", points: -20 }), entry()];
-  const card = await mount(win, "kid-chores-history-card", {}, historyHass(history, null));
+  const history = [entry({ type: "undo", label: "Dishes", points: -20, can_revert: false }), entry({ reverted: true, can_revert: false })];
+  const card = await mount(win, "kid-chores-history-card", {}, historyHass(history));
   const text = card.shadowRoot.textContent;
   assert.match(text, /Undone/);
   assert.match(text, /-20 p/);
 });
 
 test("history card follows the user's language", async () => {
-  const hass = historyHass([entry()], "Dishes");
+  const hass = historyHass([entry()]);
   hass.language = "sv";
   const card = await mount(win, "kid-chores-history-card", {}, hass);
-  assert.match(card.shadowRoot.querySelector(".undo").textContent, /Ångra: Dishes/);
+  assert.match(card.shadowRoot.querySelector(".rev").title, /Ångra/);
 });
 
 // ---------------------------------------------------------------------

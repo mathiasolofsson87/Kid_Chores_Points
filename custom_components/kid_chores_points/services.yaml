@@ -77,3 +77,14 @@ undo:
       selector:
         config_entry:
           integration: kid_chores_points
+revert:
+  fields:
+    id:
+      required: true
+      example: "3f9c2a1b7d4e"
+      selector:
+        text:
+    config_entry:
+      selector:
+        config_entry:
+          integration: kid_chores_points

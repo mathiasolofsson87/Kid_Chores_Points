@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import copy
 import logging
 import uuid
 from datetime import date, time, timedelta
@@ -41,7 +40,6 @@ from .const import (
     DEFAULT_OPTIONS,
     DOMAIN,
     EVENT_TASK_COMPLETED,
-    UNDO_LIMIT,
     POLICY_FORFEIT,
     POLICY_HALF,
     SIGNAL_UPDATE,
@@ -50,6 +48,8 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+REVERTABLE = {"chore", "bonus", "pending", "redeem", "adjust"}
 
 
 def _empty_today(date: str = "") -> dict[str, Any]:
@@ -71,6 +71,7 @@ class ChoresManager:
         self._store: Store = Store(hass, 1, f"{DOMAIN}.{entry.entry_id}")
         self._lock = asyncio.Lock()
         self.data: dict[str, Any] = {}
+        self._prev: dict[str, int] = {}
         self.signal = SIGNAL_UPDATE.format(entry.entry_id)
 
     # ------------------------------------------------------------------
@@ -123,10 +124,12 @@ class ChoresManager:
             "today": _empty_today(),
             "reward_log": [],
             "history": [],
-            "undo": [],  # snapshots taken before each change, newest last
+            "week_no": 0,  # counts closed weeks; a change is only revertable within its week
             "bedtime_sent": "",  # date of the last bedtime reminder
             **stored,
         }
+        self.data.pop("undo", None)  # snapshots of the old latest-only undo
+        self._prev = self._totals()
         # Baseline for the missed-week-close catch-up: without it an upgrade (or a
         # changed first day of the week) would close the running week right away.
         week_start = self.opt(CONF_WEEK_START)
@@ -162,24 +165,30 @@ class ChoresManager:
     def history(self) -> list[dict[str, Any]]:
         return self.data["history"]
 
-    def _snapshot(self) -> dict[str, Any]:
-        """State to restore if the change about to be made is undone."""
+    def _totals(self) -> dict[str, int]:
         return {
             "week": self.week,
             "week_bonus": self.week_bonus,
             "bank": self.bank,
             "wallet": self.wallet,
-            "today": copy.deepcopy(self.data["today"]),
         }
 
-    def _push_undo(self, snap: dict[str, Any], label: str, **extra: Any) -> None:
-        self.data["undo"].append({**snap, "label": label, **extra})
-        del self.data["undo"][:-UNDO_LIMIT]
+    def can_revert(self, entry: dict[str, Any]) -> bool:
+        """Whether a history entry can be reverted (the first entry of a change, once)."""
+        if entry.get("id") is None or entry["id"] != entry.get("group"):
+            return False
+        if entry.get("reverted") or entry["type"] not in REVERTABLE:
+            return False
+        # a closed week can't be reopened
+        return not (entry["dw"] or entry["dwb"]) or entry["wk"] == self.data["week_no"]
 
     @property
     def undo_label(self) -> str | None:
-        """What the next undo would revert, or None when nothing can be undone."""
-        return self.data["undo"][-1]["label"] if self.data["undo"] else None
+        """What `undo` would revert (the latest revertable change), or None."""
+        for entry in reversed(self.history):
+            if self.can_revert(entry):
+                return entry["label"]
+        return None
 
     def _due_close_date(self) -> date:
         """The most recent date whose week-close time (23:59) has already passed."""
@@ -199,13 +208,30 @@ class ChoresManager:
         target: str = "week",
         pending: int = 0,
         amount: int = 0,
+        entry_id: str | None = None,
+        group: str | None = None,
+        **extra: Any,
     ) -> None:
         """Append a points/wallet change to the history (call after updating totals).
 
-        `amount` is the change in wallet money (not points).
+        `amount` is the change in wallet money (not points). Entries of one change
+        (a chore and the bonus it releases) share a `group`; the entry whose id is the
+        group id is the one that can be reverted. The `d*` fields are what the entry
+        changed in the totals, so it can be reverted later.
         """
+        now = self._totals()
+        entry_id = entry_id or uuid.uuid4().hex[:12]
         self.history.append(
             {
+                "id": entry_id,
+                "group": group or entry_id,
+                "day": dt_util.now().date().isoformat(),
+                "wk": self.data["week_no"],
+                "dw": now["week"] - self._prev["week"],
+                "dwb": now["week_bonus"] - self._prev["week_bonus"],
+                "db": now["bank"] - self._prev["bank"],
+                "dwal": now["wallet"] - self._prev["wallet"],
+                **extra,
                 "t": dt_util.now().isoformat(timespec="seconds"),
                 "type": kind,
                 "label": label,
@@ -219,6 +245,7 @@ class ChoresManager:
                 "wallet": self.wallet,
             }
         )
+        self._prev = now
         del self.history[: -int(self.opt(CONF_HISTORY_LIMIT))]
 
     @property
@@ -418,19 +445,21 @@ class ChoresManager:
 
             if task in mandatory and task in today["mandatory_done"]:
                 return  # counted once per day
-            snap = self._snapshot()
+            group = uuid.uuid4().hex[:12]  # the chore and any bonus it releases
             if task in mandatory:
                 today["mandatory_done"].append(task)
                 award = int(mandatory[task])
                 released = list(today["pending"])
                 self.data["week"] = self.week + award
-                self._record("chore", task, award)
+                self._record("chore", task, award, entry_id=group)
                 if not self.mandatory_remaining():
                     pending_sum = sum(p["points"] for p in released)
                     award = pending_sum
                     for p in released:
                         self.data["week_bonus"] = self.week_bonus + int(p["points"])
-                        self._record("bonus_released", p["name"], int(p["points"]))
+                        self._record(
+                            "bonus_released", p["name"], int(p["points"]), group=group
+                        )
                     today["bonus_done"].extend(p["name"] for p in today["pending"])
                     today["pending"] = []
                     msg = self.tr("mandatory_done")
@@ -465,7 +494,6 @@ class ChoresManager:
                             ),
                         )
                     )
-            self._push_undo(snap, task)
             self._changed()
 
         for key, title, msg in notices:
@@ -484,7 +512,6 @@ class ChoresManager:
                 short = True
             else:
                 short = False
-                snap = self._snapshot()
                 reward_uid = None
                 self.data["bank"] = bank - cost
                 if payout:
@@ -504,8 +531,9 @@ class ChoresManager:
                             "done": False,
                         }
                     )
-                self._record("redeem", label, -cost, "bank", amount=payout)
-                self._push_undo(snap, label, reward_uid=reward_uid)
+                self._record(
+                    "redeem", label, -cost, "bank", amount=payout, reward_uid=reward_uid
+                )
                 self._changed()
         if short:
             await self._notify(
@@ -546,11 +574,9 @@ class ChoresManager:
     async def async_adjust(self, target: str, points: int, reason: str | None) -> None:
         async with self._lock:
             key = "week" if target == "week" else "bank"
-            snap = self._snapshot()
             before = int(self.data[key])
             self.data[key] = max(before + points, 0)
             self._record("adjust", reason or "", self.data[key] - before, key)
-            self._push_undo(snap, reason or self.tr("adjust_undo_label"))
             self._changed()
         await self._log(
             self.tr(
@@ -564,13 +590,11 @@ class ChoresManager:
     async def async_adjust_wallet(self, amount: int, reason: str | None) -> None:
         """Parent adds money to / deducts money from the wallet (never below 0)."""
         async with self._lock:
-            snap = self._snapshot()
             before = self.wallet
             self.data["wallet"] = max(before + amount, 0)
             self._record(
                 "adjust", reason or "", 0, "wallet", amount=self.wallet - before
             )
-            self._push_undo(snap, reason or self.tr("adjust_undo_label"))
             self._changed()
         await self._log(
             self.tr(
@@ -604,7 +628,7 @@ class ChoresManager:
             bank = self.bank
             self.data["week"] = 0
             self.data["week_bonus"] = 0
-            self.data["undo"] = []  # a closed week can't be reopened
+            self.data["week_no"] += 1  # a closed week can't be reopened
             if scheduled:
                 self.data["last_close"] = scheduled.isoformat()
             self._record(
@@ -644,19 +668,61 @@ class ChoresManager:
         )
 
     async def async_undo(self) -> None:
-        """Revert the most recent change to points or the wallet."""
+        """Revert the most recent change that can still be reverted."""
+        for entry in reversed(self.history):
+            if self.can_revert(entry):
+                await self.async_revert(entry["id"])
+                return
+        raise ServiceValidationError("Nothing to undo")
+
+    def _revert_today(self, entry: dict[str, Any]) -> None:
+        """Take a reverted change out of today's chore lists (if it was made today)."""
+        today = self.data["today"]
+        if entry["day"] != today["date"]:
+            return
+        kind, name = entry["type"], entry["label"]
+        if kind == "chore" and name in today["mandatory_done"]:
+            today["mandatory_done"].remove(name)
+        elif kind in ("bonus", "bonus_released") and name in today["bonus_done"]:
+            today["bonus_done"].remove(name)
+        if kind == "bonus_released":
+            today["pending"].append({"name": name, "points": entry["points"]})
+        elif kind == "pending":
+            for held in today["pending"]:
+                if held["name"] == name:
+                    today["pending"].remove(held)
+                    break
+        if kind in ("chore", "bonus", "bonus_released"):
+            today["points"] = max(today["points"] - entry["points"], 0)
+
+    async def async_revert(self, entry_id: str) -> None:
+        """Revert one change from the history, whenever it was made."""
         async with self._lock:
-            if not self.data["undo"]:
-                raise ServiceValidationError("Nothing to undo")
-            snap = self.data["undo"].pop()
-            before = self._snapshot()
-            for key in ("week", "week_bonus", "bank", "wallet", "today"):
-                self.data[key] = snap[key]
-            if uid := snap.get("reward_uid"):
+            entry = next((e for e in self.history if e.get("id") == entry_id), None)
+            if entry is None:
+                raise ServiceValidationError("Unknown history entry")
+            if entry.get("reverted"):
+                raise ServiceValidationError("Already reverted")
+            if not self.can_revert(entry):
+                raise ServiceValidationError("This change can no longer be reverted")
+            members = [e for e in self.history if e.get("group") == entry["group"]]
+            before = self._totals()
+            for key, delta in (
+                ("week", "dw"),
+                ("week_bonus", "dwb"),
+                ("bank", "db"),
+                ("wallet", "dwal"),
+            ):
+                # never below zero, e.g. when the money was already spent
+                self.data[key] = max(self.data[key] - sum(e[delta] for e in members), 0)
+            for e in reversed(members):
+                self._revert_today(e)
+                e["reverted"] = True
+            if uid := entry.get("reward_uid"):
                 self.data["reward_log"] = [
                     r for r in self.reward_log if r["uid"] != uid
                 ]
-            label = snap["label"]
+            label = entry["label"] or self.tr("adjust_undo_label")
             bank_diff = self.bank - before["bank"]
             wallet_diff = self.wallet - before["wallet"]
             if bank_diff:

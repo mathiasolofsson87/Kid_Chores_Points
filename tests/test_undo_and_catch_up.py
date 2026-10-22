@@ -6,7 +6,11 @@ import pytest
 
 from homeassistant.exceptions import ServiceValidationError
 
-from custom_components.kid_chores_points.const import UNDO_LIMIT
+
+def _seed(m, **totals):
+    """Put the tracker in a state the way earlier (unrecorded) changes would have."""
+    m.data.update(totals)
+    m._prev = m._totals()
 
 
 # ----------------------------------------------------------------------
@@ -97,13 +101,12 @@ async def test_changing_the_week_start_does_not_close_the_week(
 # ----------------------------------------------------------------------
 async def test_redeem_with_huge_units_is_refused_without_side_effects(make_manager):
     m = await make_manager()
-    m.data["bank"] = 25
+    _seed(m, bank=25)
     with pytest.raises(ServiceValidationError):
         await m.async_redeem("Cash out", units=10**9)
     assert m.bank == 25
     assert m.wallet == 0
     assert m.history == []
-    assert m.data["undo"] == []
 
 
 # ----------------------------------------------------------------------
@@ -163,7 +166,7 @@ async def test_undo_a_duplicate_completion_is_not_recorded(make_manager):
 
 async def test_undo_a_redemption_refunds_and_removes_the_reward(make_manager):
     m = await make_manager()
-    m.data["bank"] = 25
+    _seed(m, bank=25)
     await m.async_redeem("15 min Xbox")
     await m.async_redeem("15 min Xbox")
     assert len(m.reward_log) == 2
@@ -178,7 +181,7 @@ async def test_undo_a_redemption_refunds_and_removes_the_reward(make_manager):
 
 async def test_undo_keeps_other_reward_log_changes(make_manager):
     m = await make_manager()
-    m.data["bank"] = 25
+    _seed(m, bank=25)
     await m.async_redeem("15 min Xbox")
     m.reward_log[0]["done"] = True  # a parent ticks it off in the to-do list
     await m.async_redeem("15 min Xbox")
@@ -188,7 +191,7 @@ async def test_undo_keeps_other_reward_log_changes(make_manager):
 
 async def test_undo_a_cash_out_takes_the_money_back(make_manager):
     m = await make_manager()
-    m.data["bank"] = 25
+    _seed(m, bank=25)
     await m.async_redeem("Cash out")
     assert m.wallet == 5
     await m.async_undo()
@@ -199,7 +202,7 @@ async def test_undo_a_cash_out_takes_the_money_back(make_manager):
 
 async def test_undo_adjustments(make_manager):
     m = await make_manager()
-    m.data["bank"] = 10
+    _seed(m, bank=10)
     await m.async_adjust("bank", 5, "gift")
     await m.async_adjust_wallet(20, "allowance")
     await m.async_undo()
@@ -221,18 +224,14 @@ async def test_undo_steps_back_through_several_changes(make_manager):
     assert m.undo_label is None
 
 
-async def test_undo_history_is_limited(make_manager):
-    m = await make_manager()
-    for _ in range(UNDO_LIMIT + 5):
-        await m.async_adjust("bank", 1, "x")
-    assert len(m.data["undo"]) == UNDO_LIMIT
-
-
-async def test_closing_the_week_clears_undo(make_manager):
+async def test_closing_the_week_keeps_banking_changes_revertable(make_manager):
     m = await make_manager()
     await m.async_complete("Dishes")
+    await m.async_adjust("bank", 5, "gift")
     await m.async_close_week()
-    assert m.undo_label is None
+    assert m.undo_label == "gift"  # the chore belongs to a closed week
+    await m.async_undo()
+    assert m.bank == 20  # the closed week's 20 stay
     with pytest.raises(ServiceValidationError):
         await m.async_undo()
 
@@ -245,3 +244,94 @@ async def test_undo_survives_a_restart(hass, make_manager):
     assert m.undo_label == "Dishes"
     await m.async_undo()
     assert m.week == 0
+
+
+# ----------------------------------------------------------------------
+# Reverting any entry of the history
+# ----------------------------------------------------------------------
+def _entry(m, label):
+    return next(e for e in m.history if e["label"] == label and e["id"] == e["group"])
+
+
+async def test_revert_an_older_chore_leaves_the_later_ones(make_manager):
+    m = await make_manager()
+    await m.async_complete("Dishes")
+    await m.async_complete("Trash")
+    await m.async_revert(_entry(m, "Dishes")["id"])
+    assert m.week == 30
+    assert m.mandatory_remaining() == ["Dishes"]
+    assert m.today["points"] == 30
+    assert _entry(m, "Dishes")["reverted"] is True
+    assert not m.can_revert(_entry(m, "Dishes"))
+    await m.async_complete("Dishes")  # can be done again
+    assert m.week == 50
+
+
+async def test_revert_an_older_redemption(make_manager):
+    m = await make_manager()
+    _seed(m, bank=30)
+    await m.async_redeem("15 min Xbox")
+    await m.async_redeem("Cash out")
+    first = _entry(m, "15 min Xbox")
+    await m.async_revert(first["id"])
+    assert m.bank == 20 and m.wallet == 5
+    assert m.reward_log == []
+
+
+async def test_revert_cannot_be_repeated(make_manager):
+    m = await make_manager()
+    await m.async_adjust("bank", 5, "gift")
+    entry_id = _entry(m, "gift")["id"]
+    await m.async_revert(entry_id)
+    with pytest.raises(ServiceValidationError):
+        await m.async_revert(entry_id)
+    with pytest.raises(ServiceValidationError):
+        await m.async_revert("nope")
+
+
+async def test_revert_a_chore_from_a_closed_week_is_refused(make_manager):
+    m = await make_manager()
+    await m.async_complete("Dishes")
+    entry = _entry(m, "Dishes")
+    assert m.can_revert(entry)
+    await m.async_close_week()
+    assert not m.can_revert(entry)
+    with pytest.raises(ServiceValidationError):
+        await m.async_revert(entry["id"])
+
+
+async def test_revert_only_primary_entries_and_not_undo_entries(make_manager):
+    m = await make_manager()
+    await m.async_complete("Vacuum")
+    await m.async_complete("Dishes")
+    await m.async_complete("Trash")
+    released = next(e for e in m.history if e["type"] == "bonus_released")
+    assert not m.can_revert(released)
+    await m.async_undo()
+    assert not m.can_revert(m.history[-1])  # the undo entry itself
+
+
+async def test_revert_the_chore_that_released_a_bonus_takes_the_bonus_back(make_manager):
+    m = await make_manager()
+    await m.async_complete("Vacuum")
+    await m.async_complete("Dishes")
+    await m.async_complete("Trash")
+    await m.async_revert(_entry(m, "Dishes")["id"])  # not the latest
+    assert m.week == 30 and m.week_bonus == 12
+    await m.async_revert(_entry(m, "Trash")["id"])
+    assert m.week == 0 and m.week_bonus == 0
+    assert m.today["pending"] == [{"name": "Vacuum", "points": 12}]
+
+
+async def test_revert_never_goes_below_zero(make_manager):
+    m = await make_manager()
+    await m.async_adjust_wallet(20, "allowance")
+    m.data["wallet"] = 5  # most of it was spent
+    await m.async_revert(_entry(m, "allowance")["id"])
+    assert m.wallet == 0
+
+
+async def test_old_history_entries_without_an_id_cannot_be_reverted(make_manager):
+    m = await make_manager()
+    m.history.append({"t": "x", "type": "chore", "label": "Old", "points": 5})
+    assert not m.can_revert(m.history[-1])
