@@ -67,7 +67,7 @@ MEDALS: tuple[Medal, ...] = (
     Medal("bonus_10", BONUS, "bronze", 10, 5),
     Medal("bonus_50", BONUS, "silver", 50, 15),
     Medal("bonus_100", BONUS, "gold", 100, 30),
-    Medal("bonus_250", BONUS, "diamond", 250, 45),
+    Medal("bonus_250", BONUS, "diamond", 250, 50),
 )
 
 BY_ID = {m.id: m for m in MEDALS}

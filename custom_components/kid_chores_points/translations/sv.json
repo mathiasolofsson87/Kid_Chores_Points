@@ -273,14 +273,14 @@
         "title": "Medaljer för bonussysslor",
         "description": "Ställ in hur långt barnet ska nå för varje medalj och hur många bonuspoäng den ger (0–50, sätts in i banken). Varje mål måste vara högre än det ovanför. Medaljer som redan är intjänade finns kvar.",
         "data": {
-          "bonus_10_at": "Snabba extra: bonussysslor gjorda",
-          "bonus_10_bonus": "Snabba extra: bonuspoäng",
-          "bonus_50_at": "Blixtattack!: bonussysslor gjorda",
-          "bonus_50_bonus": "Blixtattack!: bonuspoäng",
-          "bonus_100_at": "Raketstart!: bonussysslor gjorda",
-          "bonus_100_bonus": "Raketstart!: bonuspoäng",
-          "bonus_250_at": "Rymdlegenden: bonussysslor gjorda",
-          "bonus_250_bonus": "Rymdlegenden: bonuspoäng"
+          "bonus_10_at": "Dinoägget: bonussysslor gjorda",
+          "bonus_10_bonus": "Dinoägget: bonuspoäng",
+          "bonus_50_at": "Stamp, stamp!: bonussysslor gjorda",
+          "bonus_50_bonus": "Stamp, stamp!: bonuspoäng",
+          "bonus_100_at": "Fossiljägaren: bonussysslor gjorda",
+          "bonus_100_bonus": "Fossiljägaren: bonuspoäng",
+          "bonus_250_at": "T-Rex-vrålet: bonussysslor gjorda",
+          "bonus_250_bonus": "T-Rex-vrålet: bonuspoäng"
         }
       }
     },

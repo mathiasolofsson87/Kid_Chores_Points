@@ -293,7 +293,7 @@ test("medals card shows earned medals, and locked ones with what to do and how f
 test("medals that don't apply to this setup are hidden until earned", async () => {
   const medals = [
     medal("day_3"),
-    medal("bonus_10", { kind: "bonus", name: "Speedy Extra", at: 10, bonus: 5, available: false }),
+    medal("bonus_10", { kind: "bonus", name: "Dino Egg", at: 10, bonus: 5, available: false }),
     medal("first_treat", { kind: "treat", tier: "treat", name: "Treat Yourself!", at: 1, bonus: 0, available: true, earned: "2026-01-05", progress: 1 }),
   ];
   const card = await mount(win, "kid-chores-medals-card", {}, medalsHass(medals));
@@ -393,7 +393,7 @@ test("a medal in the history card shows its bonus, or nothing for an honorary on
   assert.match(rows[1].querySelector(".pts").textContent, /\+5 p to the bank/);
 });
 
-test("medals card shows the earned medals and the next one to earn, and a button for the rest", async () => {
+test("medals card shows every medal, earned or not", async () => {
   const medals = [
     medal("day_3", { earned: "2026-01-05", progress: 3 }),
     medal("day_7", { name: "Super Seven", at: 7, progress: 5 }),
@@ -402,22 +402,8 @@ test("medals card shows the earned medals and the next one to earn, and a button
     medal("week_12", { kind: "week", name: "Goal-o-Matic", at: 12, progress: 3 }),
   ];
   const card = await mount(win, "kid-chores-medals-card", {}, medalsHass(medals));
-  const ids = () => Array.from(card.shadowRoot.querySelectorAll(".medal"), (el) => el.dataset.id);
-  // the first locked day medal and the first locked week medal
-  assert.deepEqual(ids(), ["day_3", "day_7", "week_10"]);
-  assert.match(card.shadowRoot.querySelector(".more").textContent, /Show all medals \(2 more\)/);
-  assert.match(card.shadowRoot.textContent, /1\/5/); // the section count still covers every medal
-
-  card.shadowRoot.querySelector(".more").click();
-  assert.deepEqual(ids(), ["day_3", "day_7", "day_14", "week_10", "week_12"]);
-  assert.match(card.shadowRoot.querySelector(".more").textContent, /Show fewer medals/);
-
-  card.shadowRoot.querySelector(".more").click();
-  assert.deepEqual(ids(), ["day_3", "day_7", "week_10"]);
-});
-
-test("there is no show-all button when nothing is hidden", async () => {
-  const card = await mount(win, "kid-chores-medals-card", {}, medalsHass([medal("day_3", { earned: "2026-01-05" })]));
+  const ids = Array.from(card.shadowRoot.querySelectorAll(".medal"), (el) => el.dataset.id);
+  assert.deepEqual(ids, ["day_3", "day_7", "day_14", "week_10", "week_12"]);
   assert.equal(card.shadowRoot.querySelector(".more"), null);
 });
 

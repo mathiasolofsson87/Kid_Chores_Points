@@ -2,6 +2,12 @@
 
 All notable changes to Kid Chores & Points. Versions match the git tags and the GitHub releases.
 
+## 1.7.2 – 2026-10-22
+
+### Changed
+- The Medals card shows every medal again. The collapsed view with a *Show all medals* button from 1.7.0 is gone.
+- The bonus-chore medals are now dinosaur themed instead of space themed: *Dino Egg* / *Dinoägget*, *Stomp Stomp!* / *Stamp, stamp!*, *Fossil Finder* / *Fossiljägaren* and *T-Rex Roar!* / *T-Rex-vrålet*, with new icons (a spotted egg, a footprint, a bone and a roaring T-Rex head). Targets are unchanged and the last medal (250 bonus chores) now pays 50 points instead of 45.
+
 ## 1.7.1 – 2026-10-22
 
 ### Fixed

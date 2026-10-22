@@ -159,7 +159,7 @@ chips:
 
 ### Medals card
 
-The child's medals, grouped as *Streaks*, *Chores* and *Bonus chores*. It shows every earned medal in colour with the date it was earned (and a **NEW** tag for two days), plus the next one still to earn in each kind, greyed out with what to do, how far along the child is and what it pays. A **Show all medals** button reveals the rest. Groups that don't apply to your setup are left out. It says how to switch the feature on while it is off. `title:` is optional.
+The child's medals, grouped as *Streaks*, *Chores* and *Bonus chores*. It shows every medal: earned ones in colour with the date they were earned (and a **NEW** tag for two days), the rest greyed out with what to do, how far along the child is and what it pays. Groups that don't apply to your setup are left out. It says how to switch the feature on while it is off. `title:` is optional.
 
 ### Chores to do card
 

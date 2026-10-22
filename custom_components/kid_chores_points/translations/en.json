@@ -273,14 +273,14 @@
         "title": "Bonus-chore medals",
         "description": "Set how far the child has to get for each medal and how many bonus points it pays (0–50, added to the bank). Each target must be higher than the one above. Medals that are already earned stay earned.",
         "data": {
-          "bonus_10_at": "Speedy Extra: bonus chores done",
-          "bonus_10_bonus": "Speedy Extra: bonus points",
-          "bonus_50_at": "Zap Attack!: bonus chores done",
-          "bonus_50_bonus": "Zap Attack!: bonus points",
-          "bonus_100_at": "Blast Off!: bonus chores done",
-          "bonus_100_bonus": "Blast Off!: bonus points",
-          "bonus_250_at": "Space Legend: bonus chores done",
-          "bonus_250_bonus": "Space Legend: bonus points"
+          "bonus_10_at": "Dino Egg: bonus chores done",
+          "bonus_10_bonus": "Dino Egg: bonus points",
+          "bonus_50_at": "Stomp Stomp!: bonus chores done",
+          "bonus_50_bonus": "Stomp Stomp!: bonus points",
+          "bonus_100_at": "Fossil Finder: bonus chores done",
+          "bonus_100_bonus": "Fossil Finder: bonus points",
+          "bonus_250_at": "T-Rex Roar!: bonus chores done",
+          "bonus_250_bonus": "T-Rex Roar!: bonus points"
         }
       }
     },

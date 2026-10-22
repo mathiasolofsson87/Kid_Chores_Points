@@ -17,7 +17,6 @@ class KidChoresMedalsCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
-    this._all = false; // show every medal, not just the earned ones and the next to earn
     this._sig = "";
   }
 
@@ -91,7 +90,6 @@ class KidChoresMedalsCard extends HTMLElement {
       S?.week_streak?.state,
       new Date().toDateString(),
       JSON.stringify(cfg),
-      this._all,
     ].join("|");
     if (sig === this._sig) return;
     this._sig = sig;
@@ -112,25 +110,12 @@ class KidChoresMedalsCard extends HTMLElement {
         ${streak("day_streak", "day", "mdi:fire")}${streak("week_streak", "week", "mdi:trophy-outline")}
         <span class="chip"><ha-icon icon="mdi:medal"></ha-icon>${kcpEsc(kcpT(h, "medals_count", { n: got, total: shown.length }))}</span>
       </div>`;
-      // collapsed: every earned medal, and the first one still to earn of each kind
-      const next = new Set();
-      const seen = new Set();
-      for (const m of shown) {
-        if (m.earned || seen.has(m.kind)) continue;
-        seen.add(m.kind);
-        next.add(m.id);
-      }
-      const visible = (m) => this._all || m.earned || next.has(m.id);
       for (const [key, kinds, color] of KCP_MEDAL_SECTIONS) {
         const list = shown.filter((m) => kinds.includes(m.kind));
         if (!list.length) continue;
         body += `<div class="sec"><span class="dot" style="background:${color}"></span>${kcpEsc(kcpT(h, key))}
           <span class="cnt">${list.filter((m) => m.earned).length}/${list.length}</span></div>
-          <div class="grid">${list.filter(visible).map((m) => this._tile(h, m)).join("")}</div>`;
-      }
-      const hidden = shown.filter((m) => !visible(m)).length;
-      if (hidden || this._all) {
-        body += `<button class="more">${kcpEsc(this._all ? kcpT(h, "m_show_less") : kcpT(h, "m_show_all", { n: hidden }))}</button>`;
+          <div class="grid">${list.map((m) => this._tile(h, m)).join("")}</div>`;
       }
     }
 
@@ -163,20 +148,12 @@ class KidChoresMedalsCard extends HTMLElement {
         .new { position: absolute; top: 8px; right: 8px; padding: 1px 7px; border-radius: 9px;
           background: #ff453a; color: #fff; font-size: .7em; font-weight: 700; letter-spacing: .04em; }
         .empty { padding: 16px 0 0; color: var(--secondary-text-color); }
-        .more { display: block; margin: 16px auto 0; padding: 8px 18px; border: 0; border-radius: 18px; cursor: pointer;
-          background: var(--secondary-background-color, rgba(127,127,127,.1)); color: var(--primary-text-color); font: inherit; }
       </style>
       <ha-card>
         <div class="t">${kcpEsc(title)}</div>
         ${summary}
         ${body}
       </ha-card>`;
-
-    this.shadowRoot.querySelector(".more")?.addEventListener("click", () => {
-      this._all = !this._all;
-      this._sig = "";
-      this._render();
-    });
   }
 }
 

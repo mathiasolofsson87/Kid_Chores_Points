@@ -80,30 +80,46 @@ const GLYPH = {
     <rect x="30" y="29.5" width="4" height="19" fill="${h}"/>
     <path d="M32 29.5C28.5 22.5 22 24.5 24.5 28C25.5 29.2 29.5 29.5 32 29.5Z" fill="${h}" stroke="${k}" stroke-width="1.5" stroke-linejoin="round"/>
     <path d="M32 29.5C35.5 22.5 42 24.5 39.5 28C38.5 29.2 34.5 29.5 32 29.5Z" fill="${h}" stroke="${k}" stroke-width="1.5" stroke-linejoin="round"/>`,
-  chevrons: (k, h) => `
-    <path d="M24 28.5L32.5 37L24 45.5M33.5 28.5L42 37L33.5 45.5" fill="none" stroke="${k}" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/>`,
-  bolt: (k, h) => `<polygon points="35.5,23.5 23.5,38.5 31,38.5 28,50.5 41,34 33,34" fill="${k}" stroke="${k}" stroke-width="1.6" stroke-linejoin="round"/>`,
-  rocket: (k, h) => `
-    <path d="M32 23.5C38.5 28.5 38.5 37.5 36.5 43H27.5C25.5 37.5 25.5 28.5 32 23.5Z" fill="${k}"/>
-    <path d="M28 37.5L21.5 44L28 43ZM36 37.5L42.5 44L36 43Z" fill="${k}"/>
-    <circle cx="32" cy="32" r="3.2" fill="${h}"/>
-    <path d="M29.6 44.6C30 48 31 50 32 52C33 50 34 48 34.4 44.6Z" fill="#ff7a1a" stroke="${k}" stroke-width="1" stroke-linejoin="round"/>`,
+
   comet: (k, h) => `
     <path d="M33.5 26.5C27 31.5 22 39.5 20 50C30.5 47.5 38.5 42.5 43.5 35.5Z" fill="${k}" fill-opacity=".78"/>
     <circle cx="38.5" cy="31" r="8" fill="${k}"/>
     <circle cx="36.2" cy="28.8" r="2.3" fill="${h}"/>
     <path d="M28.5 39.5L24 46M33 41.5L28 47" stroke="${h}" stroke-width="1.5" stroke-linecap="round"/>`,
-  planet: (k, h) => `
-    <g transform="rotate(-22 32 37)">
-      <ellipse cx="32" cy="37" rx="15.5" ry="4.8" fill="none" stroke="${k}" stroke-width="2.6"/>
-      <circle cx="32" cy="37" r="8.2" fill="${k}"/>
-      <path d="M16.5 37A15.5 4.8 0 0 0 47.5 37" fill="none" stroke="${h}" stroke-width="1.3"/>
-    </g>`,
+
   summit: (k, h) => `
     <path d="M19.5 49L28.5 33.5L32.5 39.5L37.5 31L44.5 49Z" fill="${k}" stroke="${k}" stroke-width="1.6" stroke-linejoin="round"/>
     <path d="M26.5 37L28.5 33.5L31 37.5L29 38.5ZM35.5 34.5L37.5 31L39.5 34.5L37.5 35.5Z" fill="${h}"/>
     <path d="M37.5 31V23.5" stroke="${k}" stroke-width="2" stroke-linecap="round"/>
     <path d="M37.5 24L44 26.2L37.5 28.8Z" fill="${k}" stroke="${k}" stroke-width="1" stroke-linejoin="round"/>`,
+  egg: (k, h) => `
+    <path d="M32 24.5C38.5 24.5 42.5 32 42.5 38.5C42.5 45 38 50 32 50C26 50 21.5 45 21.5 38.5C21.5 32 25.5 24.5 32 24.5Z" fill="${k}"/>
+    <path d="M26.8 31L29.6 28.6L32 31.4L34.6 28.4L37.4 31" fill="none" stroke="${h}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="27" cy="40" r="2.2" fill="${h}"/><circle cx="36.5" cy="38.5" r="1.7" fill="${h}"/>
+    <circle cx="33" cy="45.5" r="2.4" fill="${h}"/><circle cx="26.5" cy="46" r="1.4" fill="${h}"/>`,
+  footprint: (k, h) => `
+    <ellipse cx="32" cy="29" rx="3.4" ry="6.2" fill="${k}"/>
+    <ellipse cx="24.2" cy="33.2" rx="3.1" ry="5.6" fill="${k}" transform="rotate(-30 24.2 33.2)"/>
+    <ellipse cx="39.8" cy="33.2" rx="3.1" ry="5.6" fill="${k}" transform="rotate(30 39.8 33.2)"/>
+    <path d="M25.5 41C25.5 36.5 38.5 36.5 38.5 41C38.5 46.5 35 50.5 32 50.5C29 50.5 25.5 46.5 25.5 41Z" fill="${k}"/>`,
+  bone: (k, h) => `
+    <g transform="rotate(-35 32 37)" fill="${k}">
+      <rect x="21" y="34.4" width="22" height="5.2" rx="2.6"/>
+      <circle cx="21.2" cy="33.8" r="3.5"/><circle cx="21.2" cy="40.2" r="3.5"/>
+      <circle cx="42.8" cy="33.8" r="3.5"/><circle cx="42.8" cy="40.2" r="3.5"/>
+    </g>
+    <path d="M26.5 40.5L36 33.5" stroke="${h}" stroke-width="1.2" stroke-linecap="round" fill="none" opacity=".85"/>`,
+
+  trex: (k, h) => `
+    <g transform="translate(33 37) scale(1.04) translate(-31.5 -36.2)">
+      <path d="M16.5 34.5L16.8 30.2L20.5 28.2L27 26.8L33.5 27.8L39 31.5L42.5 38L41 43.5L35 41.5L33 37L26 36.2L17.5 36.8Z" fill="${k}" stroke="${k}" stroke-width="1.2" stroke-linejoin="round"/>
+      <path d="M20 42.6L27.5 40.4L33.4 38.8L34 42.6L28.4 46.4L21.2 45.2Z" fill="${k}" stroke="${k}" stroke-width="1.2" stroke-linejoin="round"/>
+      <path d="M18.6 36.6L20 39.4L21.4 36.6ZM22.6 36.4L24 39.2L25.4 36.4ZM26.4 36.2L27.8 38.8L29.2 36.2Z" fill="${k}"/>
+      <path d="M21.2 41.4L22.4 39L23.6 41.2ZM25 40.8L26.2 38.6L27.4 40.6ZM28.6 40.2L29.8 38.2L31 40Z" fill="${k}"/>
+      <circle cx="28.4" cy="30.8" r="2" fill="${h}"/><circle cx="28.4" cy="30.8" r=".9" fill="${k}"/>
+      <path d="M25.4 28.6L31 29.6" stroke="${h}" stroke-width="1" stroke-linecap="round" opacity=".6"/>
+      <circle cx="19.2" cy="31.6" r=".8" fill="${h}"/>
+    </g>`,
   shield: (k, h) => `
     <path d="M32 23.5L43.5 27.5V36.5C43.5 43 38.5 47.5 32 50.5C25.5 47.5 20.5 43 20.5 36.5V27.5Z" fill="${k}" stroke="${k}" stroke-width="1.6" stroke-linejoin="round"/>
     <polygon points="${star(32, 37.5, 7.2, 3)}" fill="${h}"/>`,
@@ -125,10 +141,10 @@ const MEDALS = [
   ["chores_500", "chores", "diamond", "crown"],
   ["chores_1000", "chores", "diamond", "shield"],
   ["first_treat", "chores", "treat", "gift"],
-  ["bonus_10", "bonus", "bronze", "chevrons"],
-  ["bonus_50", "bonus", "silver", "bolt"],
-  ["bonus_100", "bonus", "gold", "rocket"],
-  ["bonus_250", "bonus", "diamond", "planet"],
+  ["bonus_10", "bonus", "bronze", "egg"],
+  ["bonus_50", "bonus", "silver", "footprint"],
+  ["bonus_100", "bonus", "gold", "bone"],
+  ["bonus_250", "bonus", "diamond", "trex"],
 ];
 
 // __U__ is replaced by a number per rendered icon (gradient ids must be unique on a page),
