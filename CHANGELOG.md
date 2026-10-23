@@ -2,7 +2,7 @@
 
 All notable changes to Kid Chores & Points. Versions match the git tags and the GitHub releases.
 
-## Unreleased
+## 1.8.0 – 2026-10-23
 
 ### Added
 - The parents' weekly summary now lists every chore with how many days it was done (e.g. `⚠️ Trash 1/7`), worst first, plus bonus chores (`⭐ Vacuum ×3`). Chores done every day are folded into one line when the list is long. Reverted changes are not counted. Turn it off under Configure → Goal, policy & currency → *Per-chore breakdown in the weekly summary*.
