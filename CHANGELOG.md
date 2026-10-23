@@ -2,6 +2,11 @@
 
 All notable changes to Kid Chores & Points. Versions match the git tags and the GitHub releases.
 
+## 1.8.3 – 2026-10-23
+
+### Fixed
+- In the parents' weekly summary, a chore linked to a Maintenance Supporter task that is only due on some days now shows the days it was due (e.g. `⚠️ Shower 1/2`, `✅ Shower 2/2`) instead of `/7`. The days are recorded as the task becomes due, so the first week after updating may show fewer days than the task really had. Unlinked chores are still out of 7.
+
 ## 1.8.2 – 2026-10-23
 
 ### Fixed

@@ -653,10 +653,31 @@ class ChoresManager:
         self._check_day_done()
         self._changed()
 
+    def _note_due_today(self) -> None:
+        """Remember that today was a due day for each linked chore that is due now.
+
+        The weekly summary needs this to show e.g. 1/2 for a chore that only
+        comes due twice a week; Maintenance Supporter only tells us the state now.
+        """
+        if not self.chore_ids:
+            return
+        week_no = self.data["week_no"]
+        due = self.data.get("week_due")
+        if not due or due.get("wk") != week_no:
+            due = self.data["week_due"] = {"wk": week_no, "days": {}}
+        today = dt_util.now().date().isoformat()
+        skip = self._linked_not_due()
+        for chore in self.chore_ids:
+            if chore in self.mandatory and chore not in skip:
+                days = due["days"].setdefault(chore, [])
+                if today not in days:
+                    days.append(today)
+
     @callback
     def _check_day_done(self) -> None:
         """A day with nothing (left) to do counts as a perfect day."""
         self._ensure_today()
+        self._note_due_today()
         if self.mandatory and not self.mandatory_remaining():
             self._mark_perfect_day()
 
@@ -668,6 +689,7 @@ class ChoresManager:
     @callback
     def _on_midnight(self, _now: Any) -> None:
         self._ensure_today()
+        self._note_due_today()
         self._changed()
 
     async def _on_week_end(self, now: Any) -> None:
@@ -998,11 +1020,17 @@ class ChoresManager:
     def _week_breakdown(self) -> str:
         """Per-chore counts for the week being closed, worst first.
 
-        Mandatory chores count once a day, so they are shown as done/7; bonus
+        Mandatory chores count once a day, so they are shown as done/7, or as
+        done/N for a chore linked to a task that was due on N days only; bonus
         chores only have a count. Reverted entries and anything older than the
         history cap are not counted.
         """
         week_no = self.data["week_no"]
+        self._note_due_today()
+        due = self.data.get("week_due") or {}
+        due_days = {
+            c: set(d) for c, d in due.get("days", {}).items() if due.get("wk") == week_no
+        }
         counts: dict[str, int] = {}
         bonus_counts: dict[str, int] = {}
         for e in self.history:
@@ -1010,17 +1038,21 @@ class ChoresManager:
                 continue
             if e["type"] == "chore":
                 counts[e["label"]] = counts.get(e["label"], 0) + 1
+                if e["label"] in self.chore_ids:
+                    due_days.setdefault(e["label"], set()).add(e["day"])  # done, so it was due
             elif e["type"] in ("bonus", "bonus_released"):
                 bonus_counts[e["label"]] = bonus_counts.get(e["label"], 0) + 1
         rows = []  # (sort key, line)
         for name in {*self.mandatory, *counts}:
             done = counts.get(name, 0)
-            mark = "✅" if done >= 7 else "❌" if done == 0 else "⚠️"
-            rows.append((done, f"{mark} {name} {done}/7"))
+            total = len(due_days[name]) if name in self.chore_ids and due_days.get(name) else 7
+            total = max(total, done)
+            mark = "✅" if done >= total else "❌" if done == 0 else "⚠️"
+            rows.append((done / total, done, f"{mark} {name} {done}/{total}"))
         rows.sort()
-        lines = [line for _, line in rows]
+        lines = [line for *_, line in rows]
         # best chores sort last; fold those that were done every day
-        full = sum(1 for done, _ in rows if done >= 7)
+        full = sum(1 for ratio, *_ in rows if ratio >= 1)
         if len(lines) > MAX_BREAKDOWN_LINES and full:
             keep = max(len(lines) - full, MAX_BREAKDOWN_LINES)
             hidden = lines[keep:]

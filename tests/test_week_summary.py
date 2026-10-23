@@ -72,3 +72,34 @@ async def test_chores_done_every_day_are_folded_when_many(
     msg = parents[-1].data["message"]
     assert "+4 more, all done" in msg
     assert msg.count("✅") == 2  # lines are filled up to 8 before folding
+
+
+async def test_a_linked_chore_is_counted_against_the_days_it_was_due(
+    hass, make_manager, freezer
+):
+    from homeassistant.helpers import entity_registry as er
+
+    from custom_components.kid_chores_points.const import CONF_CHORE_IDS
+
+    parents = async_mock_service(hass, "notify", "parent_phone")
+    reg = er.async_get(hass).async_get_or_create(
+        "sensor", "maintenance_supporter", "maintenance_supporter_bath_t1",
+        suggested_object_id="shower_t1",
+    )
+    freezer.move_to("2026-03-02 10:00:00")
+    m = await make_manager(
+        **{
+            CONF_NOTIFY_PARENTS: ["parent_phone"],
+            CONF_MANDATORY: {"Dishes": 20, "Shower": 10},
+            CONF_CHORE_IDS: {"Shower": "t1"},
+        }
+    )
+    hass.states.async_set(reg.entity_id, "due_soon")
+    await m.async_complete("Shower")
+    hass.states.async_set(reg.entity_id, "ok")
+    freezer.move_to("2026-03-04 10:00:00")
+    hass.states.async_set(reg.entity_id, "overdue")  # due again, not done
+    await m.async_close_week()
+    msg = parents[-1].data["message"]
+    assert "⚠️ Shower 1/2" in msg
+    assert "❌ Dishes 0/7" in msg
