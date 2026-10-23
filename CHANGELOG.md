@@ -2,6 +2,12 @@
 
 All notable changes to Kid Chores & Points. Versions match the git tags and the GitHub releases.
 
+## 1.8.1 – 2026-10-23
+
+### Fixed
+- The Medals tile no longer says to finish today's tasks to keep the streak when no mandatory chore is open (for example when the only open chore is a Maintenance Supporter task that isn't due). The bedtime reminder uses the same check.
+- A day with nothing left to do is now marked as a perfect day when the integration starts or is reloaded too, e.g. after relinking a chore to a task or restarting Home Assistant, not only at 23:59:30.
+
 ## 1.8.0 – 2026-10-23
 
 ### Added

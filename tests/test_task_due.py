@@ -67,3 +67,43 @@ async def test_bonus_unlocks_when_the_only_open_chore_is_not_due(hass, make_mana
     assert m.today["pending"]
     await m.async_complete("Dishes")
     assert not m.today["pending"]
+
+
+async def test_a_finished_day_is_marked_when_the_integration_starts(
+    hass, make_manager
+):
+    from custom_components.kid_chores_points.const import CONF_MEDALS
+
+    _task_sensor(hass, "t1", "ok")
+    m = await make_manager(
+        **{
+            CONF_MEDALS: True,
+            CONF_MANDATORY: {"Dishes": 20, "Shower": 10},
+            CONF_CHORE_IDS: {"Shower": "t1"},
+        }
+    )
+    await m.async_complete("Dishes")
+    m.medal_data["perfect_days"].clear()  # as if the day was never marked
+    m.async_start()
+    assert m.medal_data["perfect_days"]
+    assert m.day_streak() == 1
+
+
+async def test_no_streak_warning_when_nothing_is_open(hass, make_manager, freezer):
+    from custom_components.kid_chores_points.const import CONF_MEDALS
+
+    freezer.move_to("2026-03-02 10:00:00")
+    _task_sensor(hass, "t1", "ok")
+    m = await make_manager(
+        **{
+            CONF_MEDALS: True,
+            CONF_MANDATORY: {"Dishes": 20, "Shower": 10},
+            CONF_CHORE_IDS: {"Shower": "t1"},
+        }
+    )
+    await m.async_complete("Dishes")
+    freezer.move_to("2026-03-03 10:00:00")
+    assert m.streak_at_risk()  # Dishes is open again
+    await m.async_complete("Dishes")
+    m.medal_data["perfect_days"].remove("2026-03-03")
+    assert not m.streak_at_risk()  # nothing left to do

@@ -290,6 +290,7 @@ class ChoresManager:
             self.medals_on
             and today not in self.medal_data["perfect_days"]
             and self.day_streak() > 0
+            and bool(self.mandatory_remaining())  # nothing left to do, nothing at risk
         )
 
     def _mark_perfect_day(self) -> None:
@@ -553,6 +554,7 @@ class ChoresManager:
         self.entry.async_on_unload(
             async_track_time_change(self.hass, self._on_week_end, 23, 59, 0)
         )
+        self._check_day_done()  # e.g. after relinking a chore or restarting
         if self.opt(CONF_BEDTIME) or self.opt(CONF_BEDTIME_WEEKEND):
             self.entry.async_on_unload(
                 async_track_time_change(self.hass, self._on_minute, second=0)
