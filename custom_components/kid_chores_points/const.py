@@ -6,6 +6,7 @@ PLATFORMS = ["sensor", "binary_sensor", "todo"]
 
 # Fired by Maintenance Supporter (iluebbe/maintenance_supporter)
 MS_DOMAIN = "maintenance_supporter"
+MS_DUE_STATES = ("overdue", "triggered", "due_soon")  # the task sensor states that mean "do it now"
 EVENT_TASK_COMPLETED = "maintenance_supporter_task_completed"
 
 # Option keys

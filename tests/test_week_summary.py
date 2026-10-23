@@ -70,5 +70,5 @@ async def test_chores_done_every_day_are_folded_when_many(
             await m.async_complete(name)
     await m.async_close_week()
     msg = parents[-1].data["message"]
-    assert "+" in msg and "all done" in msg
-    assert "Chore 0 7/7" not in msg
+    assert "+4 more, all done" in msg
+    assert msg.count("✅") == 2  # lines are filled up to 8 before folding

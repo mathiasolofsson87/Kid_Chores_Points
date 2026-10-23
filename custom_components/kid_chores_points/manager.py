@@ -10,6 +10,7 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.components.frontend.storage import async_user_store
+from homeassistant.const import EVENT_STATE_CHANGED
 from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import entity_registry as er
@@ -43,6 +44,8 @@ from .const import (
     CONF_KID_PERSONS,
     CONF_LANGUAGE_KID,
     CONF_LANGUAGE_PARENTS,
+    MS_DOMAIN,
+    MS_DUE_STATES,
     CONF_WEEK_BREAKDOWN,
     CONF_MANDATORY,
     CONF_MEDAL_RULES,
@@ -484,9 +487,42 @@ class ChoresManager:
             self.data["today"] = _empty_today(date)
         return self.data["today"]
 
+    def _task_sensor(self, entity_id: str) -> str | None:
+        """The Maintenance Supporter task id of a status sensor, if it is a linked one."""
+        reg = er.async_get(self.hass).async_get(entity_id)
+        if reg is None or reg.platform != MS_DOMAIN or not reg.unique_id:
+            return None
+        ids = set(self.chore_ids.values())
+        return next((t for t in ids if reg.unique_id.endswith(f"_{t}")), None)
+
+    def _linked_not_due(self) -> set[str]:
+        """Chores linked to a Maintenance Supporter task that is not due right now.
+
+        A task that only comes due on some days (say Wednesdays and Sundays) must
+        not hold the day open on the others. Anything unclear (Maintenance
+        Supporter missing, the sensor unavailable) counts as due.
+        """
+        if not self.chore_ids:
+            return set()
+        status: dict[str, str] = {}
+        for reg in er.async_get(self.hass).entities.values():
+            if reg.platform == MS_DOMAIN and reg.domain == "sensor" and reg.unique_id:
+                if (state := self.hass.states.get(reg.entity_id)) is not None:
+                    status[reg.unique_id] = state.state
+        not_due = set()
+        for chore, task_id in self.chore_ids.items():
+            states = [s for uid, s in status.items() if uid.endswith(f"_{task_id}")]
+            if states and states[0] not in MS_DUE_STATES and states[0] not in (
+                "unavailable",
+                "unknown",
+            ):
+                not_due.add(chore)
+        return not_due
+
     def mandatory_remaining(self) -> list[str]:
         done = self.today["mandatory_done"]
-        return [n for n in self.mandatory if n not in done]
+        skip = self._linked_not_due()
+        return [n for n in self.mandatory if n not in done and n not in skip]
 
     @callback
     def _changed(self) -> None:
@@ -502,7 +538,17 @@ class ChoresManager:
             self.hass.bus.async_listen(EVENT_TASK_COMPLETED, self._on_event)
         )
         self.entry.async_on_unload(
+            self.hass.bus.async_listen(
+                EVENT_STATE_CHANGED,
+                self._on_task_status,
+                event_filter=self._is_linked_sensor,
+            )
+        )
+        self.entry.async_on_unload(
             async_track_time_change(self.hass, self._on_midnight, 0, 0, 0)
+        )
+        self.entry.async_on_unload(
+            async_track_time_change(self.hass, self._on_day_end, 23, 59, 30)
         )
         self.entry.async_on_unload(
             async_track_time_change(self.hass, self._on_week_end, 23, 59, 0)
@@ -593,6 +639,29 @@ class ChoresManager:
             _LOGGER.debug("Ignoring '%s' completed by another user", name)
             return
         await self.async_complete(name, raise_unknown=False)
+
+    @callback
+    def _is_linked_sensor(self, data: Any) -> bool:
+        entity_id = data["entity_id"]
+        return entity_id.startswith("sensor.") and self._task_sensor(entity_id) is not None
+
+    @callback
+    def _on_task_status(self, _event: Event) -> None:
+        """A linked task became due or stopped being due: the day's list changed."""
+        self._check_day_done()
+        self._changed()
+
+    @callback
+    def _check_day_done(self) -> None:
+        """A day with nothing (left) to do counts as a perfect day."""
+        self._ensure_today()
+        if self.mandatory and not self.mandatory_remaining():
+            self._mark_perfect_day()
+
+    @callback
+    def _on_day_end(self, _now: Any) -> None:
+        self._check_day_done()
+        self._changed()
 
     @callback
     def _on_midnight(self, _now: Any) -> None:
@@ -946,7 +1015,7 @@ class ChoresManager:
             done = counts.get(name, 0)
             mark = "✅" if done >= 7 else "❌" if done == 0 else "⚠️"
             rows.append((done, f"{mark} {name} {done}/7"))
-        rows.sort(key=lambda r: r[0])
+        rows.sort()
         lines = [line for _, line in rows]
         # best chores sort last; fold those that were done every day
         full = sum(1 for done, _ in rows if done >= 7)
