@@ -21,6 +21,7 @@ Suggested order: 1 + 2, then 3, then 13, then 5 and 6.
 - [x] 10. **Weekly summary to parents** (done: per-chore counts in the week-close notification, optional) with per-chore completion counts, not just the points result.
 - [ ] 15. **Reward entity picker.** Let each reward optionally link to an entity (e.g. a smart outlet). Example: "15 min more Xbox time" → `switch.xbox_outlet`. Redeeming the reward should turn the entity on automatically for the reward's duration, then off again. *(Added 2026-10-21.)*
 - [x] 16. **Bedtime reminder.** (done: Configure → Bedtime reminder) Let the parent set the child's bedtime (possibly different on school nights and weekends) and a lead time, e.g. 45 minutes. That long before bedtime, the child's device gets a notification if any mandatory chores are still open that day, listing what's left. Nothing is sent when all are done. *(Added 2026-10-21.)*
+- [ ] 17. **"Re-check today" button.** A button entity on the child's device plus a `recheck_today` action. It re-runs the "nothing left to do" check (mark the day perfect, refresh sensors and cards) and awards a day-streak medal at once, for when something doesn't update on its own, e.g. after editing a Maintenance Supporter task. No startup delay is needed: the status listener already re-checks when the task sensors come up. *(Added 2026-10-23.)*
 
 ## Robustness and polish
 
