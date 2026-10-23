@@ -18,7 +18,7 @@ Suggested order: 1 + 2, then 3, then 13, then 5 and 6.
 - [x] 7. **Streaks and badges.** (done as streaks and medals: day and week streaks, 18 medals, Medals card; see `CHANGELOG.md` 1.7.0) E.g. 7 days in a row, or all chores every day of the week, with an optional point bonus.
 - [ ] 8. **Per-chore schedules.** Chores that only count on certain weekdays; different goals for school weeks and holidays.
 - [ ] 9. **Wallet payout request.** Child taps "request payout", the parent gets an actionable notification, and confirming runs the `adjust_wallet` deduction.
-- [ ] 10. **Weekly summary to parents** with per-chore completion counts, not just the points result.
+- [x] 10. **Weekly summary to parents** (done: per-chore counts in the week-close notification, optional) with per-chore completion counts, not just the points result.
 - [ ] 15. **Reward entity picker.** Let each reward optionally link to an entity (e.g. a smart outlet). Example: "15 min more Xbox time" → `switch.xbox_outlet`. Redeeming the reward should turn the entity on automatically for the reward's duration, then off again. *(Added 2026-10-21.)*
 - [x] 16. **Bedtime reminder.** (done: Configure → Bedtime reminder) Let the parent set the child's bedtime (possibly different on school nights and weekends) and a lead time, e.g. 45 minutes. That long before bedtime, the child's device gets a notification if any mandatory chores are still open that day, listing what's left. Nothing is sent when all are done. *(Added 2026-10-21.)*
 

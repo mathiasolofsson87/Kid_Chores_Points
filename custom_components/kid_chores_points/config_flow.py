@@ -32,6 +32,7 @@ from homeassistant.helpers.selector import (
 
 from .const import (
     CONF_BEDTIME,
+    CONF_WEEK_BREAKDOWN,
     CONF_BEDTIME_LEAD,
     CONF_BEDTIME_WEEKEND,
     CONF_BONUS,
@@ -188,6 +189,7 @@ class ChoresOptionsFlow(OptionsFlow):
             opts[CONF_WEEK_START] = user_input[CONF_WEEK_START]
             opts[CONF_CURRENCY] = user_input[CONF_CURRENCY].strip() or "kr"
             opts[CONF_HISTORY_LIMIT] = int(user_input[CONF_HISTORY_LIMIT])
+            opts[CONF_WEEK_BREAKDOWN] = user_input[CONF_WEEK_BREAKDOWN]
             self._save()
             return await self.async_step_init()
         return self.async_show_form(
@@ -227,6 +229,9 @@ class ChoresOptionsFlow(OptionsFlow):
                             mode=NumberSelectorMode.BOX,
                         )
                     ),
+                    vol.Required(
+                        CONF_WEEK_BREAKDOWN, default=opts[CONF_WEEK_BREAKDOWN]
+                    ): bool,
                 }
             ),
         )

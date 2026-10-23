@@ -43,6 +43,7 @@ from .const import (
     CONF_KID_PERSONS,
     CONF_LANGUAGE_KID,
     CONF_LANGUAGE_PARENTS,
+    CONF_WEEK_BREAKDOWN,
     CONF_MANDATORY,
     CONF_MEDAL_RULES,
     CONF_MEDALS,
@@ -71,6 +72,7 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+MAX_BREAKDOWN_LINES = 8  # chore lines in the weekly summary before the done ones are folded
 REVERTABLE = {"chore", "bonus", "pending", "redeem", "adjust"}
 
 
@@ -922,6 +924,42 @@ class ChoresManager:
             )
         )
 
+    def _week_breakdown(self) -> str:
+        """Per-chore counts for the week being closed, worst first.
+
+        Mandatory chores count once a day, so they are shown as done/7; bonus
+        chores only have a count. Reverted entries and anything older than the
+        history cap are not counted.
+        """
+        week_no = self.data["week_no"]
+        counts: dict[str, int] = {}
+        bonus_counts: dict[str, int] = {}
+        for e in self.history:
+            if e["wk"] != week_no or e.get("reverted"):
+                continue
+            if e["type"] == "chore":
+                counts[e["label"]] = counts.get(e["label"], 0) + 1
+            elif e["type"] in ("bonus", "bonus_released"):
+                bonus_counts[e["label"]] = bonus_counts.get(e["label"], 0) + 1
+        rows = []  # (sort key, line)
+        for name in {*self.mandatory, *counts}:
+            done = counts.get(name, 0)
+            mark = "✅" if done >= 7 else "❌" if done == 0 else "⚠️"
+            rows.append((done, f"{mark} {name} {done}/7"))
+        rows.sort(key=lambda r: r[0])
+        lines = [line for _, line in rows]
+        # best chores sort last; fold those that were done every day
+        full = sum(1 for done, _ in rows if done >= 7)
+        if len(lines) > MAX_BREAKDOWN_LINES and full:
+            keep = max(len(lines) - full, MAX_BREAKDOWN_LINES)
+            hidden = lines[keep:]
+            lines = lines[:keep]
+            if hidden:
+                lines.append(self.tr_parents("week_more", n=len(hidden)))
+        shown = lines
+        shown += [f"⭐ {n} ×{c}" for n, c in sorted(bonus_counts.items())]
+        return "\n".join(shown)
+
     async def async_close_week(self, scheduled: date | None = None) -> None:
         """Close the week. `scheduled` is the date of the regular 23:59 close it stands in for."""
         await self._refresh_languages()
@@ -947,6 +985,7 @@ class ChoresManager:
                 note = self.tr(key, bonus=bonus)
                 note_kid = self.tr_kid(key, bonus=bonus)
                 note_parents = self.tr_parents(key, bonus=bonus)
+            breakdown = self._week_breakdown() if self.opt(CONF_WEEK_BREAKDOWN) else ""
             self.data["bank"] = self.bank + to_bank
             bank = self.bank
             self.data["week"] = 0
@@ -993,7 +1032,8 @@ class ChoresManager:
                 bank=bank,
                 result=self.tr_parents("goal_met" if met else "goal_missed"),
             )
-            + (f" {note_parents}" if note_parents else ""),
+            + (f" {note_parents}" if note_parents else "")
+            + (f"\n\n{breakdown}" if breakdown else ""),
         )
         await self._send(notices)
 

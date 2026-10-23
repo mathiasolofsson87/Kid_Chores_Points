@@ -19,6 +19,7 @@ CONF_CHORE_IDS = "chore_ids"  # {chore name: Maintenance Supporter task id}
 CONF_REWARDS = "rewards"  # {reward label (per unit): points cost per unit}
 CONF_REWARD_PAYOUT = "reward_payout"  # {reward label: wallet money per unit}
 CONF_HISTORY_LIMIT = "history_limit"  # how many history entries are kept
+CONF_WEEK_BREAKDOWN = "week_breakdown"  # per-chore counts in the parents' weekly summary
 CONF_BEDTIME = "bedtime"  # "HH:MM", empty = no reminder
 CONF_BEDTIME_WEEKEND = "bedtime_weekend"  # "HH:MM" for Friday and Saturday nights, empty = same
 CONF_BEDTIME_LEAD = "bedtime_lead"  # minutes before bedtime to send the reminder
@@ -63,6 +64,7 @@ DEFAULT_OPTIONS = {
     CONF_MEDAL_RULES: {},
     CONF_CURRENCY: "kr",
     CONF_HISTORY_LIMIT: 300,
+    CONF_WEEK_BREAKDOWN: True,
     CONF_BEDTIME: "",
     CONF_BEDTIME_WEEKEND: "",
     CONF_BEDTIME_LEAD: 45,

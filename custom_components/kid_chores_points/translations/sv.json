@@ -37,7 +37,8 @@
           "missed_goal_policy": "Om veckomålet inte nås",
           "week_start": "Veckans första dag",
           "currency": "Plånbokens valuta",
-          "history_limit": "Historikens längd (poster)"
+          "history_limit": "Historikens längd (poster)",
+          "week_breakdown": "Per-chore-översikt i veckosammanfattningen"
         },
         "description": "Veckan stängs 23:59 dagen före veckans första dag. Då flyttas veckans poäng till banken, beroende på om målet nåddes.",
         "data_description": {
@@ -46,7 +47,8 @@
           "goal_bonus": "Ett fast extrabelopp som läggs i banken när veckan stängs med målet nått, utöver intjänade poäng och veckans bonuspoäng. Exempel: mål 50, bonus 10, intjänat 55 → 65 går till banken (plus eventuella bonussysslepoäng). Ange 0 för ingen bonus. Betalas aldrig ut om målet missas.",
           "missed_goal_policy": "Vad som sätts in i banken om målet INTE nås: alla veckans obligatoriska poäng, hälften av dem (avrundat nedåt) eller inga. Ingen målbonus betalas ut och veckans bonuspoäng går förlorade oavsett val.",
           "currency": "Visas efter plånboksbelopp, t.ex. kr. Bara en etikett – ingen omräkning.",
-          "history_limit": "Hur många ändringar som sparas i poänghistoriken (Historik-kortet och sensorn Poänghistorik). När gränsen nås tas de äldsta posterna bort. Om du sänker värdet beskärs historiken vid nästa ändring. Mellan 50 och 1000."
+          "history_limit": "Hur många ändringar som sparas i poänghistoriken (Historik-kortet och sensorn Poänghistorik). När gränsen nås tas de äldsta posterna bort. Om du sänker värdet beskärs historiken vid nästa ändring. Mellan 50 och 1000.",
+          "week_breakdown": "Lägg till hur många gånger varje syssla gjordes i föräldrarnas veckosammanfattning."
         }
       },
       "notifications": {

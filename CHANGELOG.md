@@ -4,6 +4,9 @@ All notable changes to Kid Chores & Points. Versions match the git tags and the 
 
 ## Unreleased
 
+### Added
+- The parents' weekly summary now lists every chore with how many days it was done (e.g. `⚠️ Trash 1/7`), worst first, plus bonus chores (`⭐ Vacuum ×3`). Chores done every day are folded into one line when the list is long. Reverted changes are not counted. Turn it off under Configure → Goal, policy & currency → *Per-chore breakdown in the weekly summary*.
+
 ### Changed
 - Documented that *Automatic* notification language needs a language saved in the person's Home Assistant profile (picked explicitly in Profile → Language); a profile that only follows the browser falls back to the system language. Debug logging now says why a notification language was chosen.
 
