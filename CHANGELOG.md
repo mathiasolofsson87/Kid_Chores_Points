@@ -2,6 +2,11 @@
 
 All notable changes to Kid Chores & Points. Versions match the git tags and the GitHub releases.
 
+## 1.8.2 – 2026-10-23
+
+### Fixed
+- Closing the week manually (the `close_week` service) no longer fails with `'wk'` when the history contains entries saved before the week number was recorded. Those entries are skipped in the per-chore breakdown and no longer break reverting.
+
 ## 1.8.1 – 2026-10-23
 
 ### Fixed

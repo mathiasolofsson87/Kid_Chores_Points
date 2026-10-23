@@ -223,7 +223,7 @@ class ChoresManager:
         if entry.get("reverted") or entry["type"] not in REVERTABLE:
             return False
         # a closed week can't be reopened
-        return not (entry["dw"] or entry["dwb"]) or entry["wk"] == self.data["week_no"]
+        return not (entry["dw"] or entry["dwb"]) or entry.get("wk") == self.data["week_no"]
 
     @property
     def undo_label(self) -> str | None:
@@ -1006,7 +1006,7 @@ class ChoresManager:
         counts: dict[str, int] = {}
         bonus_counts: dict[str, int] = {}
         for e in self.history:
-            if e["wk"] != week_no or e.get("reverted"):
+            if e.get("wk") != week_no or e.get("reverted"):
                 continue
             if e["type"] == "chore":
                 counts[e["label"]] = counts.get(e["label"], 0) + 1
