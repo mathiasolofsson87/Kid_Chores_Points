@@ -5,7 +5,7 @@ from __future__ import annotations
 MESSAGES: dict[str, dict[str, str]] = {
     "en": {
         "mandatory_done_title": "Today's chores done! ⭐",
-        "mandatory_done": "Great job! The bonus chores are unlocked.",
+        "mandatory_done": "Great job! All of today's chores are done.",
         "pending_released": " Your {n} waiting bonus points were added.",
         "pending_title": "Bonus points saved ⏳",
         "pending": 'Your {pts} points for "{task}" are added once today\'s chores are done. Left: {left}',
@@ -95,7 +95,7 @@ MESSAGES: dict[str, dict[str, str]] = {
     },
     "sv": {
         "mandatory_done_title": "Dagens uppgifter klara! ⭐",
-        "mandatory_done": "Bra jobbat! Bonusuppgifterna är upplåsta.",
+        "mandatory_done": "Bra jobbat! Alla dagens uppgifter är klara.",
         "pending_released": " Dina {n} väntande bonuspoäng är nu insatta.",
         "pending_title": "Bonuspoäng sparade ⏳",
         "pending": 'Dina {pts} poäng för "{task}" sätts in när dagens uppgifter är klara. Kvar: {left}',

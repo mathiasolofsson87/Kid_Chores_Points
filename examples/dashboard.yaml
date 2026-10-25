@@ -56,7 +56,7 @@ views:
           - type: heading
             heading: Bonus chores
             icon: mdi:star-plus
-          # Locked (with a hint) until today's mandatory chores are done;
+          # Always listed; bonus points are held (with a hint) until today's mandatory chores are done;
           # Done buttons for Maintenance Supporter tasks labelled "bonus".
           - type: custom:kid-chores-bonus-card
 

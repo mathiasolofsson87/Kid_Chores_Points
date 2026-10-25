@@ -71,7 +71,7 @@
       },
       "mandatory": {
         "title": "Obligatoriska sysslor",
-        "description": "Välj bland dina Maintenance Supporter-uppgifter. Varje syssla ger poäng en gång per dag, och bonussysslorna låses upp när alla är klara.\n\n{items}\n\nFör att visa sysslorna i instrumentpanelens Maintenance Supporter-lista, ge varje uppgift etiketten `mandatory` i Maintenance Supporter.",
+        "description": "Välj bland dina Maintenance Supporter-uppgifter. Varje syssla ger poäng en gång per dag, och bonuspoängen hålls tillbaka tills alla är klara.\n\n{items}\n\nFör att visa sysslorna i instrumentpanelens Maintenance Supporter-lista, ge varje uppgift etiketten `mandatory` i Maintenance Supporter.",
         "menu_options": {
           "mandatory_add": "Lägg till en syssla",
           "mandatory_edit": "Redigera en syssla",

@@ -198,7 +198,12 @@ class KidChoresTodoCard extends HTMLElement {
         .info { flex: none; color: var(--secondary-text-color); --mdc-icon-size: 20px; }
         .notes { flex: 1 0 100%; padding-top: 8px; border-top: 1px solid var(--divider-color, rgba(127,127,127,.3));
           font-size: .95em; color: var(--primary-text-color); overflow-wrap: anywhere; cursor: default; }
-        .lock { padding: 4px 0; color: var(--primary-text-color); }
+        .bonus { display: flex; align-items: center; gap: 10px; margin-top: 8px; padding: 8px 12px;
+          border-radius: 12px; background: color-mix(in srgb, var(--c) 14%, transparent);
+          border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); }
+        .bonus .star { font-size: 1.5em; line-height: 1; flex: none; }
+        .bonus .primary { font-size: .95em; }
+        .bonus .secondary { font-size: .8em; }
         .err { margin-top: 10px; font-size: .9em; color: var(--error-color, #db4437); }
       </style>
       <ha-card>

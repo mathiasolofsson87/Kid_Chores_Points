@@ -71,7 +71,7 @@
       },
       "mandatory": {
         "title": "Mandatory chores",
-        "description": "Pick from your Maintenance Supporter tasks. Each pays once per day, and bonus chores unlock when all are done.\n\n{items}\n\nTo show these chores in the dashboard's Maintenance Supporter list, give each task the label `mandatory` in Maintenance Supporter.",
+        "description": "Pick from your Maintenance Supporter tasks. Each pays once per day, and bonus points are held until all are done.\n\n{items}\n\nTo show these chores in the dashboard's Maintenance Supporter list, give each task the label `mandatory` in Maintenance Supporter.",
         "menu_options": {
           "mandatory_add": "Add a chore",
           "mandatory_edit": "Edit a chore",

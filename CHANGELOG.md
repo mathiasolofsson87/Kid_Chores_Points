@@ -2,6 +2,13 @@
 
 All notable changes to Kid Chores & Points. Versions match the git tags and the GitHub releases.
 
+## 1.10.0 – 2026-10-25
+
+### Changed
+- The Bonus chores card now always lists the bonus chores, also while today's mandatory chores are open. Bonus chores done in the meantime are held as pending and added when the last mandatory chore is done (as before), and are hidden from the list once done or held, whether or not they are linked to a Maintenance Supporter task.
+- One banner (styled like the bonus line in the Status card) replaces the old lock hint: "Come on, let's do a first bonus chore!" when there are bonus chores to do, "N bonus points are waiting" while points are held, and a green "N bonus points earned today" once the mandatory chores are done and a bonus chore has been done. It is hidden when there is nothing to do, earn or wait for.
+- The "Today's chores done" notification no longer says the bonus chores are unlocked.
+
 ## 1.9.0 – 2026-10-25
 
 ### Added

@@ -133,7 +133,7 @@ The integration ships its own dashboard cards – no extra install or resource s
 |---|---|---|
 | Status | child | Weekly progress, points, bank and wallet |
 | Chores to do | child | Today's mandatory chores with **Done** buttons |
-| Bonus chores | child | Bonus chores, unlocked when the mandatory ones are done |
+| Bonus chores | child | Bonus chores; their points are held until the mandatory ones are done |
 | Rewards | child | Redeem rewards and cash out points |
 | Wallet | child | Current money and recent activity |
 | Medals | child | Streaks and medals: earned ones, and what to do for the next |
@@ -173,7 +173,7 @@ Options (all also in the card editor – labels are offered from your Maintenanc
 
 ### Bonus chores card
 
-The bonus counterpart of the *Chores to do* card. While today's mandatory chores are open it shows only the lock hint ("Bonus chores unlock when today's chores are done") and, if any bonus points are being held, how many are waiting. Once the mandatory chores are done it lists your bonus chores with their points (a bonus chore you've already done today is hidden), plus **Done** buttons for the matching Maintenance Supporter tasks. Options and editor are the same as the *Chores to do* card, except `filter_labels` defaults to `[bonus]`.
+The bonus counterpart of the *Chores to do* card. It always lists your bonus chores with their points, plus **Done** buttons for the matching Maintenance Supporter tasks. A bonus chore you've already done today is hidden. When there are bonus chores to do, or bonus points being held, it also shows one yellow hint banner (styled like the bonus line in the *Status* card): "Come on, let's do a first bonus chore!", or, if any bonus points are being held, how many are waiting ("10 bonus points are waiting"). While mandatory chores are open the second line says the points are added once today's chores are done; once they are done it says they are added right away. Once the mandatory chores are done and a bonus chore has been done, the banner turns green and shows how many bonus points were earned today ("10 bonus points earned today"). Bonus chores done in the meantime are held as pending and added when the last mandatory chore is done. Options and editor are the same as the *Chores to do* card, except `filter_labels` defaults to `[bonus]`.
 
 ### Rewards card
 

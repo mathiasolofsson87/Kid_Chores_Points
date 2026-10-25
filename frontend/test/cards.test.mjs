@@ -123,6 +123,68 @@ const todoHass = ({ remaining, chores, ids = {}, tasks }) =>
     objects: [{ object: { name: "Kitchen" }, tasks }],
   });
 
+const bonusHass = ({ bonus_chores, pending, tasks = [] }) =>
+  makeHass({
+    sensors: {
+      mandatory_remaining: {
+        attributes: { remaining: ["Dishes"], mandatory_chores: { Dishes: 20 }, bonus_chores, chore_ids: {} },
+      },
+      points_today: { attributes: { bonus_done: [], mandatory_done: [], pending } },
+      pending_bonus: { state: String(pending.reduce((sum, p) => sum + p.points, 0)) },
+    },
+    objects: [{ object: { name: "Kitchen" }, tasks }],
+  });
+
+test("the bonus card lists bonus chores while mandatory chores are open, without the ones already held", async () => {
+  const hass = bonusHass({ bonus_chores: { Vacuum: 5, Weeds: 10 }, pending: [{ name: "Weeds", points: 10 }] });
+  const card = await mount(win, "kid-chores-bonus-card", {}, hass);
+  assert.deepEqual(rowNames(card), ["Vacuum"]);
+  const hints = card.shadowRoot.querySelectorAll(".bonus"); // one combined hint
+  assert.equal(hints.length, 1);
+  assert.match(hints[0].textContent, /10 bonus points are waiting/);
+  assert.match(hints[0].textContent, /Added once today's chores are done/);
+});
+
+test("a held bonus chore linked to a task is hidden just like an unlinked one", async () => {
+  const vacuum = task("t1", "Vacuum", { labels: ["bonus"] });
+  const open = bonusHass({ bonus_chores: { Vacuum: 5 }, pending: [], tasks: [vacuum] });
+  assert.deepEqual(rowNames(await mount(win, "kid-chores-bonus-card", {}, open)), ["Vacuum"]);
+  const held = bonusHass({ bonus_chores: { Vacuum: 5 }, pending: [{ name: "Vacuum", points: 5 }], tasks: [vacuum] });
+  assert.deepEqual(rowNames(await mount(win, "kid-chores-bonus-card", {}, held)), []);
+});
+
+test("the bonus card shows the same encouragement once the mandatory chores are done", async () => {
+  const hass = bonusHass({ bonus_chores: { Vacuum: 5 }, pending: [] });
+  hass.states["sensor.kid_mandatory_remaining"].attributes.remaining = [];
+  const card = await mount(win, "kid-chores-bonus-card", {}, hass);
+  const banner = card.shadowRoot.querySelector(".bonus");
+  assert.match(banner.textContent, /let's do a first bonus chore/);
+  assert.match(banner.textContent, /added right away/);
+});
+
+test("once mandatory chores are done the banner shows the bonus points earned today", async () => {
+  const hass = bonusHass({ bonus_chores: { Vacuum: 5, Weeds: 10 }, pending: [] });
+  hass.states["sensor.kid_mandatory_remaining"].attributes.remaining = [];
+  hass.states["sensor.kid_points_today"].attributes.bonus_done = ["Weeds"];
+  const card = await mount(win, "kid-chores-bonus-card", {}, hass);
+  assert.deepEqual(rowNames(card), ["Vacuum"]);
+  const banner = card.shadowRoot.querySelector(".bonus");
+  assert.match(banner.textContent, /10 bonus points earned today/);
+  assert.match(banner.textContent, /Added to the bank/);
+});
+
+test("the bonus card encourages a first bonus chore, and only shows a hint when there is something to do or hold", async () => {
+  const hint = async (bonus_chores) =>
+    (await mount(win, "kid-chores-bonus-card", {}, bonusHass({ bonus_chores, pending: [] }))).shadowRoot.querySelector(".bonus");
+  assert.match((await hint({ Vacuum: 5 })).textContent, /let's do a first bonus chore/);
+  assert.equal(await hint({}), null);
+  // held points are still reported when no bonus chore is left to show
+  const held = bonusHass({ bonus_chores: { Weeds: 10 }, pending: [{ name: "Weeds", points: 10 }] });
+  const card = await mount(win, "kid-chores-bonus-card", {}, held);
+  assert.deepEqual(rowNames(card), []);
+  assert.match(card.shadowRoot.querySelector(".bonus").textContent, /10 bonus points are waiting/);
+});
+
 const rowNames = (card) =>
   [...card.shadowRoot.querySelectorAll(".row .primary")].map((el) => el.textContent);
 

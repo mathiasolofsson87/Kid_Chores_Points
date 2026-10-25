@@ -61,8 +61,10 @@
       todo_due: "Due today",
       todo_failed: "Could not complete: {e}",
       bonus_title: "Bonus chores",
-      bonus_locked: "\u{1F512} Bonus chores unlock when today's chores are done.",
-      bonus_pending: "\u23F3 {n} bonus points are waiting to be added!",
+      bonus_locked: "\u2B50 Come on, let's do a first bonus chore!\nPoints are added once today's chores are done",
+      bonus_go: "\u2B50 Come on, let's do a first bonus chore!\nPoints are added right away",
+      bonus_earned: "\u2B50 {n} bonus points earned today\nAdded to the bank",
+      bonus_waiting: "\u2B50 {n} bonus points are waiting\nAdded once today's chores are done",
       bonus_none: "No bonus chores available right now.",
       wallet_title: "Wallet",
       t_wallet: "Wallet",
@@ -151,8 +153,10 @@
       todo_due: "Ska g\xF6ras idag",
       todo_failed: "Kunde inte slutf\xF6ra: {e}",
       bonus_title: "Bonusuppgifter",
-      bonus_locked: "\u{1F512} Bonusuppgifter l\xE5ses upp n\xE4r dagens uppgifter \xE4r klara.",
-      bonus_pending: "\u23F3 {n} bonuspo\xE4ng v\xE4ntar p\xE5 att l\xE4ggas till!",
+      bonus_locked: "\u2B50 Kom igen, dags f\xF6r en f\xF6rsta bonusuppgift!\nPo\xE4ngen l\xE4ggs till n\xE4r dagens uppgifter \xE4r klara",
+      bonus_go: "\u2B50 Kom igen, dags f\xF6r en f\xF6rsta bonusuppgift!\nPo\xE4ngen l\xE4ggs till direkt",
+      bonus_earned: "\u2B50 {n} bonuspo\xE4ng intj\xE4nade idag\nInsatta i banken",
+      bonus_waiting: "\u2B50 {n} bonuspo\xE4ng v\xE4ntar\nL\xE4ggs till n\xE4r dagens uppgifter \xE4r klara",
       bonus_none: "Inga bonusuppgifter tillg\xE4ngliga just nu.",
       wallet_title: "Pl\xE5nbok",
       t_wallet: "Pl\xE5nboken",
@@ -1140,7 +1144,12 @@
         .info { flex: none; color: var(--secondary-text-color); --mdc-icon-size: 20px; }
         .notes { flex: 1 0 100%; padding-top: 8px; border-top: 1px solid var(--divider-color, rgba(127,127,127,.3));
           font-size: .95em; color: var(--primary-text-color); overflow-wrap: anywhere; cursor: default; }
-        .lock { padding: 4px 0; color: var(--primary-text-color); }
+        .bonus { display: flex; align-items: center; gap: 10px; margin-top: 8px; padding: 8px 12px;
+          border-radius: 12px; background: color-mix(in srgb, var(--c) 14%, transparent);
+          border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); }
+        .bonus .star { font-size: 1.5em; line-height: 1; flex: none; }
+        .bonus .primary { font-size: .95em; }
+        .bonus .secondary { font-size: .8em; }
         .err { margin-top: 10px; font-size: .9em; color: var(--error-color, #db4437); }
       </style>
       <ha-card>
@@ -1276,32 +1285,43 @@
       const S = kcpSensors(this._hass, this._config.device);
       return (S?.mandatory_remaining?.attributes.remaining || []).length > 0;
     }
-    _lead() {
+    _lead(rows) {
       const h = this._hass;
       const S = kcpSensors(h, this._config.device);
       const pending = parseInt(S?.pending_bonus?.state, 10) || 0;
-      let out = "";
-      if (this._locked()) out += `<div class="lock">${kcpEsc(kcpT(h, "bonus_locked"))}</div>`;
-      if (pending > 0) out += `<div class="lock">${kcpEsc(kcpT(h, "bonus_pending", { n: pending }))}</div>`;
-      return out;
+      const locked = this._locked();
+      const bonus = S?.mandatory_remaining?.attributes.bonus_chores || {};
+      const earned = locked ? 0 : (S?.points_today?.attributes.bonus_done || []).reduce((sum, n) => sum + (Number(bonus[n]) || 0), 0);
+      let text, color = "#ffd60a";
+      if (locked && pending > 0) text = kcpT(h, "bonus_waiting", { n: pending });
+      else if (earned > 0) [text, color] = [kcpT(h, "bonus_earned", { n: earned }), "#30d158"];
+      else if (rows?.length) text = kcpT(h, locked ? "bonus_locked" : "bonus_go");
+      else return "";
+      const [head, note] = text.split("\n");
+      return `<div class="bonus" style="--c:${color}">
+      <span class="star">\u2B50</span>
+      <div class="txt"><div class="primary">${kcpEsc(head.replace(/^⭐\s*/, ""))}</div><div class="secondary">${kcpEsc(note || "")}</div></div>
+    </div>`;
     }
     _tail(rows) {
-      if (this._locked() || rows.length) return "";
+      if (rows.length) return "";
       return `<div class="empty">${kcpEsc(kcpT(this._hass, "bonus_none"))}</div>`;
     }
     _rows() {
       const S = kcpSensors(this._hass, this._config.device);
       const attrs = S?.mandatory_remaining?.attributes;
       if (!attrs) return null;
-      if (this._locked()) return [];
-      const doneToday = S.points_today?.attributes.bonus_done || [];
+      const doneToday = [
+        ...S.points_today?.attributes.bonus_done || [],
+        ...(S.points_today?.attributes.pending || []).map((p) => p.name)
+      ];
       const match = this._matcher(attrs.chore_ids || {});
       const rows = [];
       for (const [name, pts] of Object.entries(attrs.bonus_chores || {})) {
         const t = match.take(name);
         const ms = t?.actionable ? t : null;
         if (t && !ms) continue;
-        if (!ms && doneToday.includes(name)) continue;
+        if (doneToday.includes(name)) continue;
         rows.push({ name, pts, ms, done: false, icon: "mdi:star-circle-outline" });
       }
       for (const t of match.rest()) {
@@ -1318,7 +1338,7 @@
   window.customCards.push({
     type: "kid-chores-bonus-card",
     name: "Kid Chores & Points \u2013 Bonus chores",
-    description: "Bonus chores with Done buttons for Maintenance Supporter tasks; locked until today's mandatory chores are done.",
+    description: "Bonus chores with Done buttons for Maintenance Supporter tasks; bonus points are held until today's mandatory chores are done.",
     preview: true
   });
 
