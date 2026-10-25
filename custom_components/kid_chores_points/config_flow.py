@@ -48,6 +48,7 @@ from .const import (
     CONF_MEDAL_RULES,
     CONF_MEDALS,
     CONF_MEDALS_GRACE,
+    CONF_ADJUST_NOTIFY,
     CONF_MEDALS_NOTIFY,
     CONF_NOTIFY_KID,
     CONF_NOTIFY_PARENTS,
@@ -382,6 +383,7 @@ class ChoresOptionsFlow(OptionsFlow):
                 opts[key] = user_input.get(key, [])
             for key in (CONF_LANGUAGE_KID, CONF_LANGUAGE_PARENTS):
                 opts[key] = user_input.get(key, LANGUAGE_AUTO)
+            opts[CONF_ADJUST_NOTIFY] = bool(user_input.get(CONF_ADJUST_NOTIFY, True))
             self._save()
             return await self.async_step_init()
         services = sorted(
@@ -430,6 +432,9 @@ class ChoresOptionsFlow(OptionsFlow):
                     vol.Required(
                         CONF_LANGUAGE_PARENTS, default=opts[CONF_LANGUAGE_PARENTS]
                     ): language_selector,
+                    vol.Required(
+                        CONF_ADJUST_NOTIFY, default=opts[CONF_ADJUST_NOTIFY]
+                    ): BooleanSelector(),
                     vol.Optional(
                         CONF_NOTIFY_KID, default=opts[CONF_NOTIFY_KID]
                     ): selector(),

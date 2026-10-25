@@ -59,10 +59,12 @@
           "parent_persons": "Parents (persons)",
           "language_kid": "Language of the child's notifications",
           "language_parents": "Language of the parents' notifications",
+          "adjust_notify": "Notify when points or money are adjusted",
           "notify_kid": "Extra notify services for the child",
           "notify_parents": "Extra notify services for the parents"
         },
         "data_description": {
+          "adjust_notify": "Send a notification to the child and the parents when a parent adjusts points or the wallet by hand.",
           "language_kid": "Automatic uses the language set in the child's own Home Assistant profile (the person's user), or the system language if there is none. Choose a language to always use that one.",
           "language_parents": "Automatic uses the language set in the parents' own profiles when they all agree, otherwise the system language."
         }

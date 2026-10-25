@@ -59,10 +59,12 @@
           "parent_persons": "Föräldrar (personer)",
           "language_kid": "Språk för barnets notiser",
           "language_parents": "Språk för föräldrarnas notiser",
+          "adjust_notify": "Notifiera när poäng eller pengar justeras",
           "notify_kid": "Extra notify-tjänster för barnet",
           "notify_parents": "Extra notify-tjänster för föräldrarna"
         },
         "data_description": {
+          "adjust_notify": "Skicka en notis till barnet och föräldrarna när en förälder justerar poäng eller plånbok manuellt.",
           "language_kid": "Automatiskt använder språket i barnets egen Home Assistant-profil (personens användare), annars systemspråket. Välj ett språk för att alltid använda det.",
           "language_parents": "Automatiskt använder språket i föräldrarnas egna profiler när de är överens, annars systemspråket."
         }

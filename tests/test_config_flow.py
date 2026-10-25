@@ -18,6 +18,7 @@ from custom_components.kid_chores_points.const import (
     CONF_MEDAL_RULES,
     CONF_MEDALS,
     CONF_MEDALS_GRACE,
+    CONF_ADJUST_NOTIFY,
     CONF_MEDALS_NOTIFY,
     DEFAULT_OPTIONS,
     DOMAIN,
@@ -247,6 +248,17 @@ async def test_notification_language_is_automatic_until_chosen(hass, entry):
     await _step(hass, result["flow_id"], {CONF_LANGUAGE_KID: "sv", CONF_LANGUAGE_PARENTS: "auto"})
     assert entry.options[CONF_LANGUAGE_KID] == "sv"
     assert entry.options[CONF_LANGUAGE_PARENTS] == "auto"
+
+
+async def test_adjust_notifications_are_on_until_switched_off(hass, entry):
+    assert entry.options[CONF_ADJUST_NOTIFY] is True
+    result = await _open(hass, entry, "notifications")
+    await _step(
+        hass,
+        result["flow_id"],
+        {CONF_LANGUAGE_KID: "auto", CONF_LANGUAGE_PARENTS: "auto", CONF_ADJUST_NOTIFY: False},
+    )
+    assert entry.options[CONF_ADJUST_NOTIFY] is False
 
 
 async def test_an_unknown_notification_language_is_refused(hass, entry):

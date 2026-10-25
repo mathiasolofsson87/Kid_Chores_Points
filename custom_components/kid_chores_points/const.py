@@ -31,6 +31,7 @@ CONF_MEDAL_RULES = "medal_rules"  # {medal id: {"at": n, "bonus": points}}, over
 CONF_LANGUAGE_KID = "language_kid"  # notification language for the child: "auto" or a language code
 CONF_LANGUAGE_PARENTS = "language_parents"  # same, for the parents
 CONF_CURRENCY = "currency"  # wallet currency label, e.g. "kr"
+CONF_ADJUST_NOTIFY = "adjust_notify"  # notify when a parent adjusts points or money
 CONF_NOTIFY_KID = "notify_kid"  # extra notify service names for the child
 CONF_NOTIFY_PARENTS = "notify_parents"  # extra notify service names for parents
 CONF_KID_PERSONS = "kid_persons"  # person entity ids
@@ -71,6 +72,7 @@ DEFAULT_OPTIONS = {
     CONF_BEDTIME_LEAD: 45,
     CONF_KID_PERSONS: [],
     CONF_PARENT_PERSONS: [],
+    CONF_ADJUST_NOTIFY: True,
     CONF_NOTIFY_KID: [],
     CONF_NOTIFY_PARENTS: [],
 }

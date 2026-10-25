@@ -51,6 +51,7 @@ from .const import (
     CONF_MEDAL_RULES,
     CONF_MEDALS,
     CONF_MEDALS_GRACE,
+    CONF_ADJUST_NOTIFY,
     CONF_MEDALS_NOTIFY,
     CONF_CURRENCY,
     CONF_HISTORY_LIMIT,
@@ -984,11 +985,14 @@ class ChoresManager:
         await self._send(notices)
 
     async def async_adjust(self, target: str, points: int, reason: str | None) -> None:
+        await self._refresh_languages()
         async with self._lock:
             key = "week" if target == "week" else "bank"
             before = int(self.data[key])
             self.data[key] = max(before + points, 0)
-            self._record("adjust", reason or "", self.data[key] - before, key)
+            change = self.data[key] - before
+            total = self.data[key]
+            self._record("adjust", reason or "", change, key)
             self._changed()
         await self._log(
             self.tr(
@@ -998,15 +1002,43 @@ class ChoresManager:
                 reason=reason or self.tr("no_reason"),
             )
         )
+        if change and self.opt(CONF_ADJUST_NOTIFY):
+            sign = "plus" if change > 0 else "minus"
+            await self._notify(
+                CONF_NOTIFY_KID,
+                self.tr_kid(f"adjust_kid_{sign}_title"),
+                self.tr_kid(
+                    f"adjust_kid_{sign}_{key}",
+                    points=abs(change),
+                    total=total,
+                    reason=self._reason_text(self.tr_kid, reason),
+                ),
+            )
+            await self._notify(
+                CONF_NOTIFY_PARENTS,
+                self.tr_parents("adjust_parents_title"),
+                self.tr_parents(
+                    f"adjust_parents_{key}",
+                    delta=f"{change:+d}",
+                    total=total,
+                    reason=self._reason_text(self.tr_parents, reason),
+                ),
+            )
+
+    @staticmethod
+    def _reason_text(tr: Any, reason: str | None) -> str:
+        """The reason sentence for a notification, empty when none was given."""
+        reason = (reason or "").strip()
+        return tr("adjust_reason", reason=reason) if reason else ""
 
     async def async_adjust_wallet(self, amount: int, reason: str | None) -> None:
         """Parent adds money to / deducts money from the wallet (never below 0)."""
+        await self._refresh_languages()
         async with self._lock:
             before = self.wallet
             self.data["wallet"] = max(before + amount, 0)
-            self._record(
-                "adjust", reason or "", 0, "wallet", amount=self.wallet - before
-            )
+            change = self.wallet - before
+            self._record("adjust", reason or "", 0, "wallet", amount=change)
             self._changed()
         await self._log(
             self.tr(
@@ -1016,6 +1048,30 @@ class ChoresManager:
                 reason=reason or self.tr("no_reason"),
             )
         )
+        if change and self.opt(CONF_ADJUST_NOTIFY):
+            sign = "plus" if change > 0 else "minus"
+            await self._notify(
+                CONF_NOTIFY_KID,
+                self.tr_kid(f"wallet_kid_{sign}_title"),
+                self.tr_kid(
+                    f"wallet_kid_{sign}",
+                    amount=abs(change),
+                    cur=self.currency,
+                    wallet=self.wallet,
+                    reason=self._reason_text(self.tr_kid, reason),
+                ),
+            )
+            await self._notify(
+                CONF_NOTIFY_PARENTS,
+                self.tr_parents("wallet_parents_title"),
+                self.tr_parents(
+                    "wallet_parents",
+                    delta=f"{change:+d}",
+                    cur=self.currency,
+                    wallet=self.wallet,
+                    reason=self._reason_text(self.tr_parents, reason),
+                ),
+            )
 
     def _week_breakdown(self) -> str:
         """Per-chore counts for the week being closed, worst first.
