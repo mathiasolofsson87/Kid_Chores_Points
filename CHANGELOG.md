@@ -2,6 +2,11 @@
 
 All notable changes to Kid Chores & Points. Versions match the git tags and the GitHub releases.
 
+## 1.9.0 – 2026-10-25
+
+### Added
+- When a parent adjusts points (`adjust_points`) or the wallet (`adjust_wallet`) by hand, the child and the parents now get a notification with the change, the reason text and the new balance, in each recipient's language. Nothing is sent if the balance didn't change. Turn it off under Configure → Notifications → *Notify when points or money are adjusted* (on by default).
+
 ## 1.8.3 – 2026-10-23
 
 ### Fixed
