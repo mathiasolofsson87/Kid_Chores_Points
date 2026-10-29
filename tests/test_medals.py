@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
+
+from homeassistant.util import dt as dt_util
+
 import pytest
 from pytest_homeassistant_custom_component.common import async_mock_service
 
@@ -368,3 +372,14 @@ async def test_an_old_store_without_medals_loads(hass, make_manager):
     await restored.async_load()
     assert restored.medal_data["earned"] == {}
     assert restored.medal_data["perfect_days"] == []
+
+
+async def test_best_day_streak_drops_when_a_perfect_day_is_taken_back(make_manager):
+    m = await _on(make_manager)
+    today = dt_util.now().date()
+    m.medal_data["perfect_days"] = [
+        (today - timedelta(days=d)).isoformat() for d in range(1, 7)
+    ]
+    m.medal_data["best_day"] = 7
+    m._fix_best_day()
+    assert m.medal_data["best_day"] == 6

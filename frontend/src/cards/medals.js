@@ -88,6 +88,8 @@ class KidChoresMedalsCard extends HTMLElement {
       JSON.stringify(med?.attributes),
       S?.day_streak?.state,
       S?.week_streak?.state,
+      S?.day_streak?.attributes.best,
+      S?.week_streak?.attributes.best,
       new Date().toDateString(),
       JSON.stringify(cfg),
     ].join("|");
@@ -106,8 +108,17 @@ class KidChoresMedalsCard extends HTMLElement {
         const n = parseInt(S[key]?.state, 10) || 0;
         return `<span class="chip"><ha-icon icon="${icon}"></ha-icon>${kcpEsc(kcpCount(h, unit, n))}</span>`;
       };
+      // the best streak ever: once it passed 14 days it is shown in weeks, and it only changes
+      // when it is beaten, not when the current streak resets
+      const bestDay = parseInt(S.day_streak?.attributes.best, 10) || 0;
+      const bestWeek = parseInt(S.week_streak?.attributes.best, 10) || 0;
+      const inWeeks = bestDay > 14 && bestWeek > 0;
+      const [bestUnit, bestN] = inWeeks ? ["week", bestWeek] : ["day", bestDay];
+      const best = bestN
+        ? `<span class="chip"><ha-icon icon="mdi:podium-gold"></ha-icon>${kcpEsc(kcpT(h, "streak_best", { n: kcpCount(h, bestUnit, bestN) }))}</span>`
+        : "";
       summary = `<div class="chips">
-        ${streak("day_streak", "day", "mdi:fire")}${streak("week_streak", "week", "mdi:trophy-outline")}
+        ${streak("day_streak", "day", "mdi:fire")}${streak("week_streak", "week", "mdi:trophy-outline")}${best}
         <span class="chip"><ha-icon icon="mdi:medal"></ha-icon>${kcpEsc(kcpT(h, "medals_count", { n: got, total: shown.length }))}</span>
       </div>`;
       for (const [key, kinds, color] of KCP_MEDAL_SECTIONS) {

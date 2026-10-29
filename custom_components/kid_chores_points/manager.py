@@ -272,7 +272,10 @@ class ChoresManager:
         if not days:
             return 0
         today = dt_util.now().date()
-        day = today if today in days else today - timedelta(days=1)
+        return self._streak_ending(today if today in days else today - timedelta(days=1), days)
+
+    def _streak_ending(self, day: date, days: set[date]) -> int:
+        """The day streak that runs back from `day` through the perfect `days`."""
         first, grace, used, streak = min(days), bool(self.opt(CONF_MEDALS_GRACE)), set(), 0
         while day >= first:
             if day in days:
@@ -283,6 +286,19 @@ class ChoresManager:
                 break
             day -= timedelta(days=1)
         return streak
+
+    def _fix_best_day(self) -> None:
+        """Lower the best day streak after a perfect day was taken back.
+
+        Only when the whole history is still kept, otherwise the real record may
+        lie in days that are gone.
+        """
+        days = {date.fromisoformat(d) for d in self.medal_data["perfect_days"]}
+        if not days or len(days) >= PERFECT_DAYS_KEPT:
+            return
+        best = max(self._streak_ending(d, days) for d in days)
+        if best < self.medal_data["best_day"]:
+            self.medal_data["best_day"] = best
 
     def streak_at_risk(self) -> bool:
         """A running day streak that today's chores still have to extend."""
@@ -719,6 +735,7 @@ class ChoresManager:
                 for e in self.history
             ):
                 days.remove(yesterday)
+                self._fix_best_day()
                 return
 
     @callback
@@ -737,6 +754,7 @@ class ChoresManager:
             today = dt_util.now().date().isoformat()
             if today in self.medal_data["perfect_days"]:
                 self.medal_data["perfect_days"].remove(today)
+                self._fix_best_day()
 
     @callback
     def _on_day_end(self, _now: Any) -> None:

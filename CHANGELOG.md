@@ -2,6 +2,14 @@
 
 All notable changes to Kid Chores & Points. Versions match the git tags and the GitHub releases.
 
+## 1.11.1 – 2026-10-29
+
+### Added
+- The Medals card has a "Best: N" chip with the best streak ever reached. It shows days, and weeks once the best day streak has passed 14 days (if a week streak has been reached). It only changes when the record is beaten, not when the current streak resets.
+
+### Fixed
+- The stored best day streak is lowered again when a wrongly counted perfect day is taken back, so a false day can't leave the record too high.
+
 ## 1.11.0 – 2026-10-29
 
 ### Added

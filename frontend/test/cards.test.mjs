@@ -349,6 +349,7 @@ test("medals card shows earned medals, and locked ones with what to do and how f
   assert.match(root.querySelector('.medal[data-id="chores_25"]').textContent, /10 \/ 25 chores/);
   assert.match(root.textContent, /1 of 3 medals/);
   assert.match(root.textContent, /2 days/); // the day streak chip
+  assert.match(root.textContent, /Best: 4 days/); // the best day streak chip
   assert.equal(root.querySelectorAll(".sec").length, 2); // Streaks and Chores; no bonus or wallet medals
 });
 
@@ -435,6 +436,19 @@ test("the streak tile warns when the day streak is at risk, and shows the best s
   assert.match(card.shadowRoot.textContent, /6 days/);
   assert.match(card.shadowRoot.textContent, /Best: 40/);
   assert.doesNotMatch(card.shadowRoot.textContent, /Finish today's chores/);
+});
+
+test("the best streak chip shows the best streak ever, in weeks once it passed 14 days", async () => {
+  const hass = medalsHass([], { day: "3", week: "0" });
+  const card = await mount(win, "kid-chores-medals-card", {}, hass);
+  assert.match(card.shadowRoot.textContent, /Best: 4 days/);
+
+  // best of 20 days / 5 weeks: stays in weeks even though the current streak was reset
+  hass.states["sensor.kid_day_streak"].attributes.best = 20;
+  hass.states["sensor.kid_week_streak"].attributes.best = 5;
+  card.hass = { ...hass };
+  assert.match(card.shadowRoot.textContent, /Best: 5 weeks/);
+  assert.doesNotMatch(card.shadowRoot.textContent, /Best: \d+ days/);
 });
 
 test("status card shows no streak tiles while the feature is off", async () => {
