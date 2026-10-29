@@ -2,6 +2,15 @@
 
 All notable changes to Kid Chores & Points. Versions match the git tags and the GitHub releases.
 
+## 1.11.0 – 2026-10-29
+
+### Added
+- The History card shows "Missed day forgiven" when the streak grace option forgives a missed day (logged at midnight, once per day).
+
+### Fixed
+- A day could be counted as a perfect day (and the day streak go up) in the minutes after midnight, before Maintenance Supporter had updated its task statuses, when every mandatory chore still looked "not due". The day is now unmarked as soon as a chore shows up as due again, and the 23:59:30 check has the final word on the day.
+- When a linked chore turns overdue without having been done the day before, that day no longer counts as a perfect day.
+
 ## 1.10.0 – 2026-10-25
 
 ### Changed

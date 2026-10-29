@@ -15,6 +15,7 @@ const KCP_HISTORY = {
   week_close: ["mdi:flag-checkered", "#bf5af2"],
   undo: ["mdi:undo-variant", "#8e8e93"],
   medal: ["mdi:medal", "#ffd60a"],
+  grace: ["mdi:shield-half-full", "#ff9f0a"],
 };
 
 class KidChoresHistoryCard extends HTMLElement {

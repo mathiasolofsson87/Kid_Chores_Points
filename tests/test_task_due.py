@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from homeassistant.helpers import entity_registry as er
 
-from custom_components.kid_chores_points.const import CONF_CHORE_IDS, CONF_MANDATORY
+from custom_components.kid_chores_points.const import CONF_CHORE_IDS, CONF_MANDATORY, CONF_MEDALS
 
 
 def _task_sensor(hass, task_id, state):
@@ -107,3 +107,81 @@ async def test_no_streak_warning_when_nothing_is_open(hass, make_manager, freeze
     await m.async_complete("Dishes")
     m.medal_data["perfect_days"].remove("2026-03-03")
     assert not m.streak_at_risk()  # nothing left to do
+
+
+async def test_a_task_turning_overdue_takes_back_yesterdays_perfect_day(
+    hass, make_manager
+):
+    from datetime import timedelta
+
+    from homeassistant.util import dt as dt_util
+
+    entity_id = _task_sensor(hass, "t1", "ok")
+    m = await make_manager(
+        **{
+            CONF_MANDATORY: {"Dishes": 20, "Shower": 10},
+            CONF_CHORE_IDS: {"Shower": "t1"},
+            CONF_MEDALS: True,
+        }
+    )
+    yesterday = (dt_util.now().date() - timedelta(days=1)).isoformat()
+    m.medal_data["perfect_days"].append(yesterday)
+    hass.states.async_set(entity_id, "overdue")
+    m._check_day_done()
+    assert yesterday not in m.medal_data["perfect_days"]
+
+
+async def test_a_forgiven_day_is_logged_in_the_history(hass, make_manager):
+    from datetime import timedelta
+
+    from homeassistant.util import dt as dt_util
+
+    from custom_components.kid_chores_points.const import CONF_MEDALS_GRACE
+
+    m = await make_manager(**{CONF_MEDALS: True, CONF_MEDALS_GRACE: True})
+    today = dt_util.now().date()
+    m.medal_data["perfect_days"] = [(today - timedelta(days=d)).isoformat() for d in (2, 3)]
+    m._note_grace_used()
+    m._note_grace_used()  # only once
+    entries = [e for e in m.history if e["type"] == "grace"]
+    assert [e["label"] for e in entries] == [(today - timedelta(days=1)).isoformat()]
+
+
+async def test_a_day_marked_perfect_before_a_task_showed_as_due_is_unmarked(
+    hass, make_manager
+):
+    from homeassistant.util import dt as dt_util
+
+    entity_id = _task_sensor(hass, "t1", "ok")
+    m = await make_manager(
+        **{
+            CONF_MANDATORY: {"Shower": 10},
+            CONF_CHORE_IDS: {"Shower": "t1"},
+            CONF_MEDALS: True,
+        }
+    )
+    today = dt_util.now().date().isoformat()
+    m._check_day_done()  # just after midnight: nothing looks due yet
+    assert today in m.medal_data["perfect_days"]
+    hass.states.async_set(entity_id, "due_soon")
+    m._check_day_done()
+    assert today not in m.medal_data["perfect_days"]
+
+
+async def test_the_day_end_check_has_the_final_word(hass, make_manager):
+    from homeassistant.util import dt as dt_util
+
+    entity_id = _task_sensor(hass, "t1", "ok")
+    m = await make_manager(
+        **{
+            CONF_MANDATORY: {"Shower": 10},
+            CONF_CHORE_IDS: {"Shower": "t1"},
+            CONF_MEDALS: True,
+        }
+    )
+    today = dt_util.now().date().isoformat()
+    m._on_day_end(None)
+    assert today in m.medal_data["perfect_days"]
+    hass.states.async_set(entity_id, "overdue")
+    m._on_day_end(None)
+    assert today not in m.medal_data["perfect_days"]

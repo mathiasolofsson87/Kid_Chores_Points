@@ -674,22 +674,80 @@ class ChoresManager:
                 if today not in days:
                     days.append(today)
 
+    def _note_grace_used(self) -> None:
+        """Log in the history that the grace option forgave yesterday."""
+        if not (self.medals_on and self.opt(CONF_MEDALS_GRACE)):
+            return
+        yesterday = (dt_util.now().date() - timedelta(days=1)).isoformat()
+        if yesterday in self.medal_data["perfect_days"]:
+            return
+        # today isn't perfect yet, so a running streak means yesterday was bridged
+        if self.day_streak() > 0 and not any(
+            e["type"] == "grace" and e["label"] == yesterday for e in self.history
+        ):
+            self._record("grace", yesterday, 0)
+
+    def _revoke_missed_yesterday(self) -> None:
+        """Take back yesterday's perfect day if a linked chore was due and not done.
+
+        Maintenance Supporter only reports a task as overdue once its due date has
+        passed, so on the due day itself it can look "not due" and the day gets
+        marked perfect. A linked chore that is overdue now, and wasn't done
+        yesterday, was due yesterday.
+        """
+        if not self.medals_on:
+            return
+        yesterday = (dt_util.now().date() - timedelta(days=1)).isoformat()
+        days = self.medal_data["perfect_days"]
+        if yesterday not in days:
+            return
+        overdue = {
+            reg.unique_id: state.state
+            for reg in er.async_get(self.hass).entities.values()
+            if reg.platform == MS_DOMAIN and reg.domain == "sensor" and reg.unique_id
+            and (state := self.hass.states.get(reg.entity_id)) is not None
+        }
+        for chore, task_id in self.chore_ids.items():
+            if chore not in self.mandatory:
+                continue
+            if not any(
+                s == "overdue" and uid.endswith(f"_{task_id}") for uid, s in overdue.items()
+            ):
+                continue
+            if not any(
+                e["type"] == "chore" and e["label"] == chore and e["day"] == yesterday
+                for e in self.history
+            ):
+                days.remove(yesterday)
+                return
+
     @callback
     def _check_day_done(self) -> None:
         """A day with nothing (left) to do counts as a perfect day."""
         self._ensure_today()
+        self._revoke_missed_yesterday()
         self._note_due_today()
-        if self.mandatory and not self.mandatory_remaining():
+        if not self.mandatory:
+            return
+        if not self.mandatory_remaining():
             self._mark_perfect_day()
+        elif self.medals_on:
+            # a linked task that turned out to be due after all (its status lags
+            # behind right after midnight) means the day wasn't perfect
+            today = dt_util.now().date().isoformat()
+            if today in self.medal_data["perfect_days"]:
+                self.medal_data["perfect_days"].remove(today)
 
     @callback
     def _on_day_end(self, _now: Any) -> None:
+        """The final word on the day: perfect if nothing was left, otherwise not."""
         self._check_day_done()
         self._changed()
 
     @callback
     def _on_midnight(self, _now: Any) -> None:
         self._ensure_today()
+        self._note_grace_used()
         self._note_due_today()
         self._changed()
 

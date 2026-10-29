@@ -73,6 +73,7 @@
       w_empty: "No money yet. Cash out points to fill your wallet!",
       h_cashout: "Cashed out",
       h_medal: "Medal earned",
+      h_grace: "Missed day forgiven",
       unit_day_1: "day",
       unit_day_n: "days",
       unit_week_1: "week",
@@ -165,6 +166,7 @@
       w_empty: "Inga pengar \xE4n. V\xE4xla po\xE4ng f\xF6r att fylla pl\xE5nboken!",
       h_cashout: "Utv\xE4xlat",
       h_medal: "Medalj intj\xE4nad",
+      h_grace: "Missad dag f\xF6rl\xE5ten",
       unit_day_1: "dag",
       unit_day_n: "dagar",
       unit_week_1: "vecka",
@@ -786,7 +788,8 @@
     wallet: ["mdi:wallet", "#64d2ff"],
     week_close: ["mdi:flag-checkered", "#bf5af2"],
     undo: ["mdi:undo-variant", "#8e8e93"],
-    medal: ["mdi:medal", "#ffd60a"]
+    medal: ["mdi:medal", "#ffd60a"],
+    grace: ["mdi:shield-half-full", "#ff9f0a"]
   };
   var KidChoresHistoryCard = class extends HTMLElement {
     constructor() {
