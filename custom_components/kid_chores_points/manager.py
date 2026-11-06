@@ -687,8 +687,21 @@ class ChoresManager:
         for chore in self.chore_ids:
             if chore in self.mandatory and chore not in skip:
                 days = due["days"].setdefault(chore, [])
-                if today not in days:
+                # an overdue task rolled over from an earlier day is the same
+                # due date still open, not a new one
+                if today not in days and not self._carried_over(chore, days):
                     days.append(today)
+
+    def _carried_over(self, chore: str, days: list[str]) -> bool:
+        """True if the chore's latest due day is before today and it was never done."""
+        if not days:
+            return False
+        last = max(days)
+        return last < dt_util.now().date().isoformat() and not any(
+            e["type"] == "chore" and e["label"] == chore and e["day"] >= last
+            and not e.get("reverted")
+            for e in self.history
+        )
 
     def _note_grace_used(self) -> None:
         """Log in the history that the grace option forgave yesterday."""
@@ -1165,15 +1178,27 @@ class ChoresManager:
         }
         counts: dict[str, int] = {}
         bonus_counts: dict[str, int] = {}
+        done_days: dict[str, list[str]] = {}
         for e in self.history:
             if e.get("wk") != week_no or e.get("reverted"):
                 continue
             if e["type"] == "chore":
                 counts[e["label"]] = counts.get(e["label"], 0) + 1
                 if e["label"] in self.chore_ids:
-                    due_days.setdefault(e["label"], set()).add(e["day"])  # done, so it was due
+                    done_days.setdefault(e["label"], []).append(e["day"])
             elif e["type"] in ("bonus", "bonus_released"):
                 bonus_counts[e["label"]] = bonus_counts.get(e["label"], 0) + 1
+        for chore, days in done_days.items():
+            # a completion was due that day, unless it made up for an earlier
+            # due day still open (an overdue task done late)
+            due = due_days.setdefault(chore, set())
+            open_days = sorted(due)
+            for day in sorted(days):
+                earlier = [d for d in open_days if d <= day]
+                if earlier:
+                    open_days.remove(earlier[-1])
+                else:
+                    due.add(day)
         rows = []  # (sort key, line)
         for name in {*self.mandatory, *counts}:
             done = counts.get(name, 0)

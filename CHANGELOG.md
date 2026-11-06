@@ -2,6 +2,11 @@
 
 All notable changes to Kid Chores & Points. Versions match the git tags and the GitHub releases.
 
+## 1.11.2 – 2026-11-06
+
+### Fixed
+- The weekly summary no longer counts an overdue linked chore as due again on every day it stays overdue. A chore that rolls over to the next day is one open due day, and doing it late completes that day (for example Shower 1/1 instead of 3/6).
+
 ## 1.11.1 – 2026-10-29
 
 ### Added
