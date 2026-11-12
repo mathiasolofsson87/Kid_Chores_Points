@@ -2,6 +2,11 @@
 
 All notable changes to Kid Chores & Points. Versions match the git tags and the GitHub releases.
 
+## 1.11.3 – 2026-11-12
+
+### Fixed
+- The integration failed to start after updating to 1.11.2 if the history held entries saved by older versions (`KeyError: 'day'`). Those entries now fall back to the date in their timestamp.
+
 ## 1.11.2 – 2026-11-06
 
 ### Fixed

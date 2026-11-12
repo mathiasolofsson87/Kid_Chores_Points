@@ -80,6 +80,11 @@ MAX_BREAKDOWN_LINES = 8  # chore lines in the weekly summary before the done one
 REVERTABLE = {"chore", "bonus", "pending", "redeem", "adjust"}
 
 
+def _entry_day(entry: dict[str, Any]) -> str:
+    """The day a history entry was made; old entries only have the timestamp."""
+    return entry.get("day") or entry.get("t", "")[:10]
+
+
 def _empty_today(date: str = "") -> dict[str, Any]:
     return {
         "date": date,
@@ -698,7 +703,7 @@ class ChoresManager:
             return False
         last = max(days)
         return last < dt_util.now().date().isoformat() and not any(
-            e["type"] == "chore" and e["label"] == chore and e["day"] >= last
+            e["type"] == "chore" and e["label"] == chore and _entry_day(e) >= last
             and not e.get("reverted")
             for e in self.history
         )
@@ -744,7 +749,7 @@ class ChoresManager:
             ):
                 continue
             if not any(
-                e["type"] == "chore" and e["label"] == chore and e["day"] == yesterday
+                e["type"] == "chore" and e["label"] == chore and _entry_day(e) == yesterday
                 for e in self.history
             ):
                 days.remove(yesterday)
@@ -1185,7 +1190,7 @@ class ChoresManager:
             if e["type"] == "chore":
                 counts[e["label"]] = counts.get(e["label"], 0) + 1
                 if e["label"] in self.chore_ids:
-                    done_days.setdefault(e["label"], []).append(e["day"])
+                    done_days.setdefault(e["label"], []).append(_entry_day(e))
             elif e["type"] in ("bonus", "bonus_released"):
                 bonus_counts[e["label"]] = bonus_counts.get(e["label"], 0) + 1
         for chore, days in done_days.items():
@@ -1308,7 +1313,7 @@ class ChoresManager:
     def _revert_today(self, entry: dict[str, Any]) -> None:
         """Take a reverted change out of today's chore lists (if it was made today)."""
         today = self.data["today"]
-        if entry["day"] != today["date"]:
+        if _entry_day(entry) != today["date"]:
             return
         kind, name = entry["type"], entry["label"]
         if kind == "chore" and name in today["mandatory_done"]:
@@ -1355,8 +1360,8 @@ class ChoresManager:
                 e["reverted"] = True
                 if medal := e.get("medal"):
                     md["earned"].pop(medal, None)
-                if e["type"] == "chore" and e["day"] in md["perfect_days"]:
-                    md["perfect_days"].remove(e["day"])  # that day is no longer perfect
+                if e["type"] == "chore" and _entry_day(e) in md["perfect_days"]:
+                    md["perfect_days"].remove(_entry_day(e))  # that day is no longer perfect
             if uid := entry.get("reward_uid"):
                 self.data["reward_log"] = [
                     r for r in self.reward_log if r["uid"] != uid

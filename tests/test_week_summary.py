@@ -135,3 +135,28 @@ async def test_an_overdue_linked_chore_is_one_due_day_not_one_per_day(
     await m.async_complete("Shower")
     await m.async_close_week()
     assert "✅ Shower 1/1" in parents[-1].data["message"]
+
+
+async def test_history_entries_without_a_day_field_do_not_break_the_due_check(
+    hass, make_manager, freezer
+):
+    from homeassistant.helpers import entity_registry as er
+
+    from custom_components.kid_chores_points.const import CONF_CHORE_IDS
+
+    reg = er.async_get(hass).async_get_or_create(
+        "sensor", "maintenance_supporter", "maintenance_supporter_bath_t1",
+        suggested_object_id="shower_t1",
+    )
+    freezer.move_to("2026-03-02 10:00:00")
+    m = await make_manager(
+        **{CONF_MANDATORY: {"Shower": 10}, CONF_CHORE_IDS: {"Shower": "t1"}}
+    )
+    hass.states.async_set(reg.entity_id, "due_soon")
+    m._note_due_today()
+    await m.async_complete("Shower")
+    for e in m.history:  # entries saved by old versions have only the timestamp
+        e.pop("day", None)
+    freezer.move_to("2026-03-03 10:00:00")
+    hass.states.async_set(reg.entity_id, "overdue")
+    m._note_due_today()  # used to raise KeyError: 'day'
